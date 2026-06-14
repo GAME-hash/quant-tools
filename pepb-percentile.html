@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PE/PB 分位器 — 量化工具工厂</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d2991d;
+  --border: #30363d;
+  --muted: #8b949e;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+}
+
+.container {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  padding: 20px 0 8px;
+}
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header .sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 14px;
+}
+
+/* Mode toggle */
+.mode-toggle {
+  display: flex;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 3px;
+  border: 1px solid var(--border);
+}
+.mode-btn {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(88,166,255,0.3);
+}
+
+/* Type toggle PE/PB */
+.type-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.type-chip {
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.type-chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 1px 6px rgba(88,166,255,0.25);
+}
+
+/* Input fields */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.input-row label {
+  font-size: 0.82rem;
+  color: var(--muted);
+  min-width: 48px;
+  text-align: right;
+}
+.input-row input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(88,166,255,0.12);
+}
+.input-row .unit {
+  font-size: 0.8rem;
+  color: var(--muted);
+  min-width: 20px;
+}
+
+.btn-calc {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), #3b82f6);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+.btn-calc:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(88,166,255,0.3);
+}
+.btn-calc:active {
+  transform: translateY(0);
+}
+
+/* Demo selector */
+.stock-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.stock-chip {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.stock-chip:hover {
+  border-color: var(--accent);
+}
+.stock-chip.selected {
+  border-color: var(--accent);
+  background: rgba(88,166,255,0.1);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.stock-chip .name { font-weight: 600; display: block; }
+.stock-chip .range {
+  font-size: 0.7rem;
+  color: var(--muted);
+  display: block;
+  margin-top: 2px;
+}
+
+.demo-slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.demo-slider-group label {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.demo-slider-group input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  outline: none;
+}
+.demo-slider-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+}
+.demo-slider-val {
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Results */
+.result-area {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+}
+.result-area.visible { display: flex; }
+
+/* Percentile big number */
+.percentile-display {
+  text-align: center;
+  padding: 10px 0;
+}
+.percentile-num {
+  font-size: 4rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.percentile-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Gauge bar */
+.gauge-wrapper {
+  position: relative;
+  margin: 8px 0;
+}
+.gauge-bar {
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(to right, var(--green) 0%, var(--green) 25%, var(--yellow) 50%, var(--red) 75%, var(--red) 100%);
+  position: relative;
+  overflow: visible;
+}
+.gauge-marker {
+  position: absolute;
+  top: -8px;
+  width: 4px;
+  height: 30px;
+  border-radius: 2px;
+  background: #fff;
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px rgba(255,255,255,0.5);
+  transition: left 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+  z-index: 2;
+}
+.gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* Judgment badge */
+.judgment {
+  text-align: center;
+  padding: 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.judgment.undervalued {
+  background: rgba(63,185,80,0.12);
+  color: var(--green);
+  border: 1px solid rgba(63,185,80,0.25);
+}
+.judgment.fair {
+  background: rgba(210,153,29,0.12);
+  color: var(--yellow);
+  border: 1px solid rgba(210,153,29,0.25);
+}
+.judgment.overvalued {
+  background: rgba(248,81,73,0.12);
+  color: var(--red);
+  border: 1px solid rgba(248,81,73,0.25);
+}
+
+/* Stats row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+.stat-item {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 10px 6px;
+}
+.stat-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.stat-label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Footer warning */
+.footer-warning {
+  margin-top: auto;
+  padding: 14px 0 20px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.footer-warning .icon { display: block; font-size: 1.2rem; margin-bottom: 4px; }
+.footer-warning strong { color: var(--yellow); }
+</style>
+</head>
+<body>
+
+<main class="container">
+  <div class="header">
+    <h1>📊 PE/PB 分位器</h1>
+    <div class="sub">历史估值分位数 · 低估/合理/高估判定</div>
+  </div>
+
+  <!-- Mode Toggle -->
+  <div class="card">
+    <div class="mode-toggle">
+      <button class="mode-btn active" onclick="switchMode('manual')">✏️ 手动模式</button>
+      <button class="mode-btn" onclick="switchMode('demo')">📋 演示模式</button>
+    </div>
+  </div>
+
+  <!-- Manual Mode Panel -->
+  <div class="card" id="panel-manual">
+    <div class="card-title">手动输入</div>
+    <div class="type-toggle">
+      <button class="type-chip active" onclick="switchType('PE')">PE（市盈率）</button>
+      <button class="type-chip" onclick="switchType('PB')">PB（市净率）</button>
+    </div>
+    <div class="input-group" id="manual-inputs">
+      <div class="input-row">
+        <label>当前值</label>
+        <input type="number" id="in-current" placeholder="例如 25" step="any">
+        <span class="unit">倍</span>
+      </div>
+      <div class="input-row">
+        <label>最低值</label>
+        <input type="number" id="in-min" placeholder="例如 18" step="any">
+        <span class="unit">倍</span>
+      </div>
+      <div class="input-row">
+        <label>最高值</label>
+        <input type="number" id="in-max" placeholder="例如 73" step="any">
+        <span class="unit">倍</span>
+      </div>
+      <div class="input-row">
+        <label>中位值</label>
+        <input type="number" id="in-median" placeholder="例如 35" step="any">
+        <span class="unit">倍</span>
+      </div>
+    </div>
+    <button class="btn-calc" onclick="calculateManual()">🔍 计算分位数</button>
+  </div>
+
+  <!-- Demo Mode Panel -->
+  <div class="card" id="panel-demo" style="display:none;">
+    <div class="card-title">选择标的</div>
+    <div class="type-toggle">
+      <button class="type-chip active" onclick="switchType('PE')">PE（市盈率）</button>
+      <button class="type-chip" onclick="switchType('PB')">PB（市净率）</button>
+    </div>
+    <div class="stock-grid" id="stock-grid"></div>
+    <div class="demo-slider-group" id="demo-slider-group" style="display:none;">
+      <label>拖动调整当前估值</label>
+      <input type="range" id="demo-range" min="0" max="100" value="50" oninput="onDemoSlider()">
+      <div class="demo-slider-val" id="demo-slider-val">—</div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="card result-area" id="result-card">
+    <div class="percentile-display">
+      <div class="percentile-num" id="percentile-num">--</div>
+      <div class="percentile-label">历史分位数</div>
+    </div>
+    <div class="gauge-wrapper">
+      <div class="gauge-bar">
+        <div class="gauge-marker" id="gauge-marker" style="left:0%"></div>
+      </div>
+      <div class="gauge-labels">
+        <span>低估</span><span>合理偏低</span><span>合理偏高</span><span>高估</span>
+      </div>
+    </div>
+    <div class="judgment" id="judgment-text">—</div>
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-val" id="stat-current">--</div>
+        <div class="stat-label">当前值</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="stat-min">--</div>
+        <div class="stat-label">历史最低</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="stat-max">--</div>
+        <div class="stat-label">历史最高</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="stat-median">--</div>
+        <div class="stat-label">历史中位</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Warning -->
+  <div class="footer-warning">
+    <span class="icon">⚠️</span>
+    <strong>风险提示：</strong>历史分位数仅反映过去，不预示未来。<br>
+    估值受基本面、市场情绪、行业周期等多重因素影响，<br>
+    分位数低不代表必然上涨，分位数高不代表必然下跌。<br>
+    投资有风险，决策需谨慎。本工具仅供学习研究参考。
+  </div>
+</main>
+
+<script>
+// ============ State ============
+let currentMode = 'manual';
+let currentType = 'PE';
+let selectedStock = null;
+let currentResult = null;
+
+// Built-in demo stocks (近5年 PE)
+const STOCKS_PE = [
+  { name: '贵州茅台', code: '600519', min: 18, max: 73, median: 35 },
+  { name: '宁德时代', code: '300750', min: 18, max: 215, median: 55 },
+  { name: '比亚迪', code: '002594', min: 15, max: 280, median: 80 },
+  { name: '招商银行', code: '600036', min: 5, max: 13, median: 9 },
+  { name: '科创50', code: '000688', min: 28, max: 85, median: 45 },
+  { name: '寒武纪', code: '688256', min: -999, max: -50, median: -200 }
+];
+
+const STOCKS_PB = [
+  { name: '贵州茅台', code: '600519', min: 4.5, max: 18.2, median: 8.0 },
+  { name: '宁德时代', code: '300750', min: 3.2, max: 16.8, median: 7.5 },
+  { name: '比亚迪', code: '002594', min: 2.1, max: 10.5, median: 4.8 },
+  { name: '招商银行', code: '600036', min: 0.9, max: 2.2, median: 1.3 },
+  { name: '科创50', code: '000688', min: 2.8, max: 7.5, median: 4.2 },
+  { name: '寒武纪', code: '688256', min: 8.0, max: 45.0, median: 18.0 }
+];
+
+// ============ Init ============
+function init() {
+  buildStockGrid();
+}
+
+function buildStockGrid() {
+  const grid = document.getElementById('stock-grid');
+  const stocks = currentType === 'PE' ? STOCKS_PE : STOCKS_PB;
+  grid.innerHTML = '';
+  stocks.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'stock-chip';
+    btn.innerHTML = `<span class="name">${s.name}</span><span class="range">${s.min} ~ ${s.max}（中位 ${s.median}）</span>`;
+    btn.onclick = () => selectStock(s, btn);
+    grid.appendChild(btn);
+  });
+}
+
+// ============ Mode / Type Switching ============
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    if (b.textContent.includes(mode === 'manual' ? '手动' : '演示')) b.classList.add('active');
+  });
+  document.getElementById('panel-manual').style.display = mode === 'manual' ? '' : 'none';
+  document.getElementById('panel-demo').style.display = mode === 'demo' ? '' : 'none';
+  if (mode === 'demo') buildStockGrid();
+  selectedStock = null;
+  document.getElementById('demo-slider-group').style.display = 'none';
+  hideResult();
+}
+
+function switchType(type) {
+  currentType = type;
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.type-chip').forEach(c => {
+    if (c.textContent.includes(type)) c.classList.add('active');
+  });
+  if (currentMode === 'demo') {
+    buildStockGrid();
+    selectedStock = null;
+    document.getElementById('demo-slider-group').style.display = 'none';
+  }
+  hideResult();
+}
+
+// ============ Demo Stock Selection ============
+function selectStock(stock, btnEl) {
+  selectedStock = stock;
+  document.querySelectorAll('.stock-chip').forEach(c => c.classList.remove('selected'));
+  btnEl.classList.add('selected');
+
+  const sliderGroup = document.getElementById('demo-slider-group');
+  const range = document.getElementById('demo-range');
+  const valDisplay = document.getElementById('demo-slider-val');
+
+  // Clamp min/max for slider
+  const rMin = stock.min;
+  const rMax = stock.max;
+  range.min = rMin;
+  range.max = rMax;
+  range.step = Math.max(0.01, (rMax - rMin) / 200);
+  range.value = stock.median;
+  valDisplay.textContent = stock.median.toFixed(2) + ' 倍';
+  sliderGroup.style.display = '';
+
+  calculateDemo();
+}
+
+function onDemoSlider() {
+  const range = document.getElementById('demo-range');
+  const valDisplay = document.getElementById('demo-slider-val');
+  valDisplay.textContent = parseFloat(range.value).toFixed(2) + ' 倍';
+  calculateDemo();
+}
+
+function calculateDemo() {
+  if (!selectedStock) return;
+  const current = parseFloat(document.getElementById('demo-range').value);
+  const { min, max, median } = selectedStock;
+  showResult(current, min, max, median);
+}
+
+// ============ Manual Calculation ============
+function calculateManual() {
+  const current = parseFloat(document.getElementById('in-current').value);
+  const min = parseFloat(document.getElementById('in-min').value);
+  const max = parseFloat(document.getElementById('in-max').value);
+  const median = parseFloat(document.getElementById('in-median').value);
+
+  if (isNaN(current) || isNaN(min) || isNaN(max) || isNaN(median)) {
+    alert('请填写所有数值字段');
+    return;
+  }
+  if (min >= max) {
+    alert('最低值必须小于最高值');
+    return;
+  }
+
+  showResult(current, min, max, median);
+}
+
+// ============ Display Result ============
+function showResult(current, min, max, median) {
+  // Percentile: where current sits in [min, max] range, 0% = at min, 100% = at max
+  let percentile;
+  if (max === min) {
+    percentile = 50;
+  } else {
+    percentile = ((current - min) / (max - min)) * 100;
+  }
+  percentile = Math.max(0, Math.min(100, percentile));
+
+  // Also compute relative to median
+  let medianPct = median !== min && max !== min
+    ? ((median - min) / (max - min)) * 100
+    : 50;
+
+  // Judgment
+  let judgmentClass, judgmentText;
+  if (percentile <= 25) {
+    judgmentClass = 'undervalued';
+    judgmentText = '🟢 低估区间 — 当前估值处于历史低位';
+  } else if (percentile <= 50) {
+    judgmentClass = 'fair';
+    judgmentText = '🟡 合理偏低 — 低于历史中位，估值尚可';
+  } else if (percentile <= 75) {
+    judgmentClass = 'fair';
+    judgmentText = '🟠 合理偏高 — 高于历史中位，需关注风险';
+  } else {
+    judgmentClass = 'overvalued';
+    judgmentText = '🔴 高估区间 — 当前估值处于历史高位';
+  }
+
+  // Update DOM
+  document.getElementById('percentile-num').textContent = percentile.toFixed(1) + '%';
+  document.getElementById('percentile-num').style.color = getPercentileColor(percentile);
+
+  const marker = document.getElementById('gauge-marker');
+  marker.style.left = percentile.toFixed(1) + '%';
+
+  const judgment = document.getElementById('judgment-text');
+  judgment.textContent = judgmentText;
+  judgment.className = 'judgment ' + judgmentClass;
+
+  document.getElementById('stat-current').textContent = current.toFixed(2);
+  document.getElementById('stat-min').textContent = min.toFixed(2);
+  document.getElementById('stat-max').textContent = max.toFixed(2);
+  document.getElementById('stat-median').textContent = median.toFixed(2);
+
+  document.getElementById('result-card').classList.add('visible');
+
+  currentResult = { current, min, max, median, percentile };
+}
+
+function getPercentileColor(pct) {
+  if (pct <= 20) return 'var(--green)';
+  if (pct <= 40) return '#7ec843';
+  if (pct <= 60) return 'var(--yellow)';
+  if (pct <= 80) return '#e8843a';
+  return 'var(--red)';
+}
+
+function hideResult() {
+  document.getElementById('result-card').classList.remove('visible');
+  currentResult = null;
+}
+
+// ============ Keyboard shortcut ============
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && currentMode === 'manual') {
+    calculateManual();
+  }
+});
+
+// ============ Start ============
+init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>持仓体检单 | 量化工具箱</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --border: #21262d;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d2991d;
+  --orange: #f0883e;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  min-height: 100vh;
+  padding: 16px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ── 顶部标题 ── */
+.header {
+  text-align: center;
+  padding: 20px 0 8px;
+}
+.header h1 {
+  font-size: 1.4em;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), #a371f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header .subtitle {
+  font-size: 0.78em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── 卡片容器 ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+.card-title {
+  font-size: 0.85em;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── 输入表单 ── */
+.form-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.form-row input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 0.95em;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-row input:focus {
+  border-color: var(--accent);
+}
+.form-row input::placeholder { color: var(--muted); }
+.form-row .code-input { max-width: 120px; }
+.form-row .qty-input { max-width: 90px; text-align: center; }
+
+.btn {
+  padding: 12px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--accent);
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn:hover { background: rgba(88,166,255,0.08); border-color: var(--accent); }
+.btn:active { transform: scale(0.97); }
+.btn-full { width: 100%; display: block; text-align: center; }
+.btn-sm { padding: 6px 12px; font-size: 0.78em; border-radius: 8px; }
+.btn-danger { color: var(--red); }
+.btn-danger:hover { background: rgba(248,81,73,0.08); border-color: var(--red); }
+.btn-green { color: var(--green); }
+.btn-green:hover { background: rgba(63,185,80,0.08); border-color: var(--green); }
+
+/* ── 持仓列表 ── */
+.holding-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.holding-item:last-child { border-bottom: none; }
+.holding-info { flex: 1; min-width: 0; }
+.holding-code {
+  font-weight: 700;
+  font-size: 0.95em;
+  color: var(--accent);
+}
+.holding-name {
+  font-size: 0.78em;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.holding-name .industry-tag {
+  display: inline-block;
+  background: rgba(88,166,255,0.12);
+  color: var(--accent);
+  font-size: 0.72em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+.holding-qty {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--text);
+  margin-right: 12px;
+  text-align: right;
+  min-width: 70px;
+}
+.holding-qty .pct {
+  display: block;
+  font-size: 0.75em;
+  color: var(--muted);
+  font-weight: 400;
+}
+.holding-delete {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.1em;
+  padding: 6px;
+  transition: color 0.2s;
+  line-height: 1;
+}
+.holding-delete:hover { color: var(--red); }
+
+/* ── 健康评分 ── */
+.health-section {
+  text-align: center;
+  padding: 24px 20px;
+}
+.health-number {
+  font-size: 4em;
+  font-weight: 800;
+  line-height: 1;
+  transition: color 0.5s;
+}
+.health-verdict {
+  font-size: 1.3em;
+  font-weight: 700;
+  margin-top: 6px;
+}
+.health-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #f85149, #d2991d, #3fb950);
+  margin: 14px 0 6px;
+  position: relative;
+}
+.health-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: transparent;
+}
+.health-bar-dot {
+  position: absolute;
+  top: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--bg);
+  transition: left 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: 0 0 12px rgba(255,255,255,0.3);
+}
+.health-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── 诊断卡片 ── */
+.diag-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.diag-row:last-child { border-bottom: none; }
+.diag-label { font-size: 0.88em; }
+.diag-value {
+  font-weight: 600;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.78em;
+  font-weight: 600;
+}
+.badge-safe  { background: rgba(63,185,80,0.12);  color: var(--green); }
+.badge-warn  { background: rgba(210,153,29,0.12);  color: var(--yellow); }
+.badge-danger { background: rgba(248,81,73,0.12);  color: var(--red); }
+.badge-info  { background: rgba(88,166,255,0.12);  color: var(--accent); }
+
+/* ── 行业分布条 ── */
+.industry-bar-wrap {
+  margin-top: 8px;
+}
+.industry-bar-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.industry-bar-label {
+  font-size: 0.78em;
+  color: var(--muted);
+  min-width: 50px;
+  text-align: right;
+}
+.industry-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.industry-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+.industry-bar-pct {
+  font-size: 0.78em;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: left;
+}
+
+/* ── 导入/导出按钮行 ── */
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.btn-row .btn { flex: 1; text-align: center; }
+
+/* ── 空状态 ── */
+.empty-state {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--muted);
+  font-size: 0.9em;
+  line-height: 1.8;
+}
+.empty-state .empty-icon { font-size: 2.5em; display: block; margin-bottom: 10px; }
+
+/* ── 底部 ── */
+.disclaimer {
+  font-size: 0.72em;
+  color: var(--muted);
+  text-align: center;
+  padding: 16px 0 32px;
+  line-height: 1.6;
+}
+.hidden { display: none !important; }
+
+/* ── Toast提示 ── */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 0.85em;
+  color: var(--text);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🩺 持仓体检单</h1>
+  <div class="subtitle">集中度诊断 · 行业分布 · 健康评分</div>
+</div>
+
+<!-- 添加持仓 -->
+<div class="card">
+  <div class="card-title">➕ 添加持仓</div>
+  <div class="form-row">
+    <input type="text" class="code-input" id="codeInput" placeholder="代码 (如 600519)" maxlength="6" autocomplete="off">
+    <input type="number" class="qty-input" id="qtyInput" placeholder="数量" min="1" step="100" value="1000">
+    <button class="btn" onclick="addHolding()">添加</button>
+  </div>
+  <div style="font-size:0.72em;color:var(--muted);margin-top:4px">
+    快捷键：输入代码后按 Enter 添加
+  </div>
+</div>
+
+<!-- 持仓列表 -->
+<div class="card" id="holdingsCard">
+  <div class="card-title">📋 当前持仓 <span style="font-weight:400;font-size:0.85em;color:var(--muted)" id="holdingCount">(0 只)</span></div>
+  <div id="holdingsList">
+    <div class="empty-state">
+      <span class="empty-icon">📭</span>
+      暂无持仓<br>请添加你的股票/ETF代码和数量
+    </div>
+  </div>
+</div>
+
+<!-- 健康评分 -->
+<div class="card health-section hidden" id="healthCard">
+  <div class="card-title" style="justify-content:center">💊 持仓健康评分</div>
+  <div class="health-number" id="healthNumber">--</div>
+  <div class="health-verdict" id="healthVerdict">--</div>
+  <div class="health-bar">
+    <div class="health-bar-dot" id="healthDot" style="left:50%"></div>
+  </div>
+  <div class="health-labels">
+    <span>🔴 危险</span><span>⚠️ 注意</span><span>🟢 健康</span>
+  </div>
+</div>
+
+<!-- 集中度诊断 -->
+<div class="card hidden" id="diagCard">
+  <div class="card-title">🔍 集中度诊断</div>
+  <div id="diagContent"></div>
+</div>
+
+<!-- 行业分布 -->
+<div class="card hidden" id="industryCard">
+  <div class="card-title">🏭 行业分布</div>
+  <div id="industryContent"></div>
+</div>
+
+<!-- ETF vs 个股 -->
+<div class="card hidden" id="etfCard">
+  <div class="card-title">📊 ETF vs 个股</div>
+  <div id="etfContent"></div>
+</div>
+
+<!-- 导入/导出 -->
+<div class="btn-row">
+  <button class="btn btn-green" onclick="exportHoldings()">📤 导出 JSON</button>
+  <button class="btn" onclick="importHoldings()">📥 导入 JSON</button>
+</div>
+<button class="btn btn-full btn-danger" onclick="clearAll()" style="margin-bottom:14px">🗑️ 清空全部持仓</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<p class="disclaimer">
+  ⚠️ 仅供参考，不构成投资建议<br>
+  数据本地存储 · 所有分析基于用户输入的持仓数量<br>
+  评分算法仅供参考，投资决策请自行判断
+</p>
+
+<script>
+// ══════════════════════════════════════
+//  行业映射表
+// ══════════════════════════════════════
+const INDUSTRY_MAP = {
+  '600519': '白酒', '000858': '白酒', '600197': '白酒',
+  '601318': '保险',
+  '600036': '银行', '000001': '银行',
+  '600030': '证券', '159841': '证券',
+  '159928': '消费',
+  '515070': 'AI科技',
+  '159801': '芯片', '300458': '芯片', '688521': '芯片',
+  '588080': '科创50',
+  '588710': '半导体',
+  '600035': '交通',
+  '600179': '物流',
+  '002335': '数据中心',
+  '601991': '电力', '600396': '电力',
+  '603897': '电气',
+  '002129': '光伏',
+  '002222': '光学',
+  '000062': '电子', '603115': '电子',
+  '688256': 'AI芯片',
+  '603757': '机械',
+  '002929': '通信',
+  '600584': '封测',
+  '603278': '制造',
+  '603363': '农业',
+};
+
+// ETF代码识别 (以15/16/51/56/58/588开头的6位代码)
+function isETF(code) {
+  const prefix = code.substring(0, 2);
+  const prefix3 = code.substring(0, 3);
+  return prefix === '15' || prefix === '16' || prefix === '51' || prefix === '56' || prefix === '58' || prefix3 === '588';
+}
+
+function getIndustry(code) {
+  if (INDUSTRY_MAP[code]) return INDUSTRY_MAP[code];
+  if (isETF(code)) return 'ETF-指数';
+  return '其他';
+}
+
+// ══════════════════════════════════════
+//  数据管理 (localStorage)
+// ══════════════════════════════════════
+const STORAGE_KEY = 'portfolio_checkup_holdings';
+
+function loadHoldings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveHoldings(holdings) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(holdings));
+}
+
+let holdings = loadHoldings();
+
+// ══════════════════════════════════════
+//  Toast
+// ══════════════════════════════════════
+let toastTimer;
+function showToast(msg, duration = 2000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ══════════════════════════════════════
+//  添加/删除持仓
+// ══════════════════════════════════════
+function addHolding() {
+  const codeInput = document.getElementById('codeInput');
+  const qtyInput = document.getElementById('qtyInput');
+  let code = codeInput.value.trim();
+  const qty = parseInt(qtyInput.value) || 0;
+
+  if (!code) {
+    showToast('请输入股票/ETF代码');
+    return;
+  }
+  if (qty <= 0) {
+    showToast('请输入有效的持仓数量');
+    return;
+  }
+
+  // 支持 sh.600519 或 sz.000858 格式，自动提取纯代码
+  code = code.replace(/^(sh|sz)\./i, '');
+
+  if (!/^\d{6}$/.test(code)) {
+    showToast('代码格式错误，请输入6位数字代码');
+    return;
+  }
+
+  // 检查是否已存在
+  const existing = holdings.find(h => h.code === code);
+  if (existing) {
+    existing.qty += qty;
+  } else {
+    holdings.push({ code, qty });
+  }
+
+  saveHoldings(holdings);
+  codeInput.value = '';
+  qtyInput.value = '1000';
+  codeInput.focus();
+
+  showToast(`✅ 已添加 ${code} × ${qty.toLocaleString()}`);
+  renderAll();
+}
+
+function removeHolding(code) {
+  holdings = holdings.filter(h => h.code !== code);
+  saveHoldings(holdings);
+  showToast(`🗑️ 已移除 ${code}`);
+  renderAll();
+}
+
+function clearAll() {
+  if (holdings.length === 0) return;
+  if (!confirm(`确定要清空全部 ${holdings.length} 只持仓吗？`)) return;
+  holdings = [];
+  saveHoldings(holdings);
+  showToast('已清空全部持仓');
+  renderAll();
+}
+
+// ══════════════════════════════════════
+//  导入/导出
+// ══════════════════════════════════════
+function exportHoldings() {
+  if (holdings.length === 0) {
+    showToast('⚠️ 暂无持仓可导出');
+    return;
+  }
+  const data = {
+    exported_at: new Date().toISOString(),
+    count: holdings.length,
+    holdings: holdings.map(h => ({
+      code: h.code,
+      qty: h.qty,
+      industry: getIndustry(h.code),
+      isETF: isETF(h.code),
+    })),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `portfolio-checkup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 导出成功');
+}
+
+function importHoldings() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.holdings || !Array.isArray(data.holdings)) {
+          throw new Error('格式错误：缺少 holdings 数组');
+        }
+        const imported = [];
+        for (const h of data.holdings) {
+          let code = String(h.code).trim();
+          code = code.replace(/^(sh|sz)\./i, '');
+          if (!/^\d{6}$/.test(code)) continue;
+          const qty = parseInt(h.qty) || 0;
+          if (qty <= 0) continue;
+          imported.push({ code, qty });
+        }
+        if (imported.length === 0) {
+          showToast('⚠️ 文件中没有有效的持仓数据');
+          return;
+        }
+        if (holdings.length > 0) {
+          if (!confirm(`当前有 ${holdings.length} 只持仓，导入将覆盖现有数据，确定继续？`)) return;
+        }
+        holdings = imported;
+        saveHoldings(holdings);
+        showToast(`📥 成功导入 ${holdings.length} 只持仓`);
+        renderAll();
+      } catch (err) {
+        showToast('❌ 文件解析失败：' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ══════════════════════════════════════
+//  计算引擎
+// ══════════════════════════════════════
+function calcTotalQty() {
+  return holdings.reduce((sum, h) => sum + h.qty, 0);
+}
+
+function calcConcentration() {
+  const total = calcTotalQty();
+  if (total === 0) return { stocks: [], industries: [], maxStock: 0, maxIndustry: 0 };
+
+  // 单票集中度
+  const stocks = holdings.map(h => ({
+    code: h.code,
+    qty: h.qty,
+    pct: (h.qty / total) * 100,
+  })).sort((a, b) => b.pct - a.pct);
+
+  // 行业集中度
+  const industryMap = {};
+  for (const h of holdings) {
+    const ind = getIndustry(h.code);
+    if (!industryMap[ind]) industryMap[ind] = 0;
+    industryMap[ind] += h.qty;
+  }
+  const industries = Object.entries(industryMap)
+    .map(([name, qty]) => ({ name, qty, pct: (qty / total) * 100 }))
+    .sort((a, b) => b.pct - a.pct);
+
+  return {
+    stocks,
+    industries,
+    maxStock: stocks.length > 0 ? stocks[0].pct : 0,
+    maxIndustry: industries.length > 0 ? industries[0].pct : 0,
+  };
+}
+
+function calcHealthScore() {
+  const total = calcTotalQty();
+  if (total === 0) return { score: 0, verdict: '', color: 'var(--muted)', details: [] };
+
+  const conc = calcConcentration();
+  let score = 80; // 基准分
+  const details = [];
+
+  // 1. 单票集中度扣分
+  const maxStock = conc.maxStock;
+  if (maxStock > 50) { score -= 40; details.push({ text: `单票${conc.stocks[0].code}集中度 ${maxStock.toFixed(1)}% — 极端危险`, cls: 'danger' }); }
+  else if (maxStock > 40) { score -= 30; details.push({ text: `单票集中度 ${maxStock.toFixed(1)}% — 高度危险`, cls: 'danger' }); }
+  else if (maxStock > 30) { score -= 20; details.push({ text: `单票集中度 ${maxStock.toFixed(1)}% — 危险`, cls: 'danger' }); }
+  else if (maxStock > 20) { score -= 10; details.push({ text: `单票集中度 ${maxStock.toFixed(1)}% — 偏高`, cls: 'warn' }); }
+  else { details.push({ text: `单票集中度 ${maxStock.toFixed(1)}% — 安全`, cls: 'safe' }); }
+
+  // 2. 行业集中度扣分
+  const maxInd = conc.maxIndustry;
+  if (maxInd > 60) { score -= 35; details.push({ text: `行业「${conc.industries[0].name}」占比 ${maxInd.toFixed(1)}% — 极端集中`, cls: 'danger' }); }
+  else if (maxInd > 50) { score -= 25; details.push({ text: `行业「${conc.industries[0].name}」占比 ${maxInd.toFixed(1)}% — 高度集中`, cls: 'danger' }); }
+  else if (maxInd > 40) { score -= 15; details.push({ text: `行业「${conc.industries[0].name}」占比 ${maxInd.toFixed(1)}% — 较集中`, cls: 'warn' }); }
+  else if (maxInd > 30) { score -= 5; details.push({ text: `行业「${conc.industries[0].name}」占比 ${maxInd.toFixed(1)}% — 略集中`, cls: 'warn' }); }
+  else { details.push({ text: `行业分布合理，最大行业 ${maxInd.toFixed(1)}%`, cls: 'safe' }); }
+
+  // 3. ETF比例加分
+  const etfQty = holdings.filter(h => isETF(h.code)).reduce((s, h) => s + h.qty, 0);
+  const etfPct = total > 0 ? (etfQty / total) * 100 : 0;
+  if (etfPct >= 50) { score += 15; details.push({ text: `ETF占比 ${etfPct.toFixed(1)}% — 分散化优秀`, cls: 'safe' }); }
+  else if (etfPct >= 30) { score += 10; details.push({ text: `ETF占比 ${etfPct.toFixed(1)}% — 分散化良好`, cls: 'safe' }); }
+  else if (etfPct >= 10) { score += 5; details.push({ text: `ETF占比 ${etfPct.toFixed(1)}% — 有一定分散`, cls: 'safe' }); }
+  else if (holdings.length > 0) { details.push({ text: `ETF占比 ${etfPct.toFixed(1)}% — 建议增加指数配置`, cls: 'warn' }); }
+  else { details.push({ text: '暂无持仓', cls: 'info' }); }
+
+  // 4. 持仓数量加分
+  const count = holdings.length;
+  if (count >= 10) { score += 10; details.push({ text: `持仓 ${count} 只 — 数量充足`, cls: 'safe' }); }
+  else if (count >= 5) { score += 5; details.push({ text: `持仓 ${count} 只 — 数量适中`, cls: 'safe' }); }
+  else if (count >= 3) { /* neutral */ details.push({ text: `持仓 ${count} 只 — 数量偏少`, cls: 'warn' }); }
+  else if (count >= 1) { score -= 10; details.push({ text: `持仓 ${count} 只 — 数量过少，建议增持`, cls: 'danger' }); }
+
+  // 封顶
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  let verdict, color;
+  if (score >= 80) { verdict = '健康 🟢'; color = 'var(--green)'; }
+  else if (score >= 60) { verdict = '良好 🟡'; color = 'var(--yellow)'; }
+  else if (score >= 40) { verdict = '注意 🟠'; color = 'var(--orange)'; }
+  else { verdict = '危险 🔴'; color = 'var(--red)'; }
+
+  return { score, verdict, color, details, etfPct };
+}
+
+// ══════════════════════════════════════
+//  渲染
+// ══════════════════════════════════════
+function renderAll() {
+  renderHoldingsList();
+  renderHealthScore();
+  renderDiagnostics();
+  renderIndustry();
+  renderETF();
+}
+
+function renderHoldingsList() {
+  const container = document.getElementById('holdingsList');
+  const countEl = document.getElementById('holdingCount');
+  countEl.textContent = `(${holdings.length} 只)`;
+
+  if (holdings.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">📭</span>
+        暂无持仓<br>请添加你的股票/ETF代码和数量
+      </div>`;
+    return;
+  }
+
+  const total = calcTotalQty();
+  container.innerHTML = holdings.map(h => {
+    const pct = total > 0 ? ((h.qty / total) * 100).toFixed(1) : '0.0';
+    const industry = getIndustry(h.code);
+    const etfLabel = isETF(h.code) ? ' 📊' : '';
+    return `
+      <div class="holding-item">
+        <div class="holding-info">
+          <span class="holding-code">${h.code}${etfLabel}</span>
+          <div class="holding-name">
+            <span class="industry-tag">${industry}</span>
+          </div>
+        </div>
+        <div class="holding-qty">
+          ${h.qty.toLocaleString()}
+          <span class="pct">${pct}%</span>
+        </div>
+        <button class="holding-delete" onclick="removeHolding('${h.code}')" title="删除">✕</button>
+      </div>`;
+  }).join('');
+}
+
+function renderHealthScore() {
+  const card = document.getElementById('healthCard');
+  if (holdings.length === 0) {
+    card.classList.add('hidden');
+    return;
+  }
+  card.classList.remove('hidden');
+
+  const health = calcHealthScore();
+  const numEl = document.getElementById('healthNumber');
+  numEl.textContent = health.score;
+  numEl.style.color = health.color;
+
+  const verdictEl = document.getElementById('healthVerdict');
+  verdictEl.textContent = health.verdict;
+  verdictEl.style.color = health.color;
+
+  document.getElementById('healthDot').style.left = health.score + '%';
+}
+
+function renderDiagnostics() {
+  const card = document.getElementById('diagCard');
+  const content = document.getElementById('diagContent');
+  if (holdings.length === 0) {
+    card.classList.add('hidden');
+    return;
+  }
+  card.classList.remove('hidden');
+
+  const conc = calcConcentration();
+  const health = calcHealthScore();
+
+  // 单票集中度
+  const maxStock = conc.maxStock;
+  let stockBadge = 'safe', stockLabel = '安全 ✅';
+  if (maxStock > 30) { stockBadge = 'danger'; stockLabel = '危险 🔴'; }
+  else if (maxStock > 20) { stockBadge = 'warn'; stockLabel = '偏高 ⚠️'; }
+
+  // 行业集中度
+  const maxInd = conc.maxIndustry;
+  let indBadge = 'safe', indLabel = '分散 ✅';
+  if (maxInd > 40) { indBadge = 'danger'; indLabel = '集中 🔴'; }
+  else if (maxInd > 30) { indBadge = 'warn'; indLabel = '较集中 ⚠️'; }
+
+  // 前3大持仓
+  const top3 = conc.stocks.slice(0, 3).map(s =>
+    `${s.code} ${s.pct.toFixed(1)}%`
+  ).join(' · ');
+
+  content.innerHTML = `
+    <div class="diag-row">
+      <span class="diag-label">📌 最大单票集中度</span>
+      <span class="diag-value">
+        ${maxStock.toFixed(1)}%
+        <span class="badge badge-${stockBadge}">${stockLabel}</span>
+      </span>
+    </div>
+    <div class="diag-row">
+      <span class="diag-label">🏭 最大行业集中度</span>
+      <span class="diag-value">
+        ${maxInd.toFixed(1)}%
+        <span class="badge badge-${indBadge}">${indLabel}</span>
+      </span>
+    </div>
+    <div class="diag-row">
+      <span class="diag-label">🔝 前3大持仓</span>
+      <span class="diag-value" style="font-size:0.82em;font-weight:400">${top3}</span>
+    </div>
+    ${health.details.map(d => `
+    <div class="diag-row">
+      <span class="diag-label">${d.text}</span>
+      <span class="badge badge-${d.cls}">${d.cls === 'safe' ? '✓' : d.cls === 'warn' ? '⚠' : d.cls === 'danger' ? '✗' : 'ℹ'}</span>
+    </div>`).join('')}
+  `;
+}
+
+function renderIndustry() {
+  const card = document.getElementById('industryCard');
+  const content = document.getElementById('industryContent');
+  if (holdings.length === 0) {
+    card.classList.add('hidden');
+    return;
+  }
+  card.classList.remove('hidden');
+
+  const conc = calcConcentration();
+  const colors = ['#58a6ff', '#3fb950', '#d2991d', '#f0883e', '#f85149', '#a371f7', '#8b949e', '#79c0ff', '#56d364', '#e3b341'];
+
+  content.innerHTML = conc.industries.map((ind, i) => {
+    const color = colors[i % colors.length];
+    return `
+      <div class="industry-bar-row">
+        <span class="industry-bar-label">${ind.name}</span>
+        <div class="industry-bar-track">
+          <div class="industry-bar-fill" style="width:${ind.pct}%;background:${color}"></div>
+        </div>
+        <span class="industry-bar-pct">${ind.pct.toFixed(1)}%</span>
+      </div>`;
+  }).join('');
+}
+
+function renderETF() {
+  const card = document.getElementById('etfCard');
+  const content = document.getElementById('etfContent');
+  if (holdings.length === 0) {
+    card.classList.add('hidden');
+    return;
+  }
+  card.classList.remove('hidden');
+
+  const total = calcTotalQty();
+  const etfQty = holdings.filter(h => isETF(h.code)).reduce((s, h) => s + h.qty, 0);
+  const stockQty = total - etfQty;
+  const etfPct = total > 0 ? (etfQty / total) * 100 : 0;
+  const stockPct = total > 0 ? (stockQty / total) * 100 : 0;
+
+  let ratioVerdict = '';
+  if (etfPct >= 50) ratioVerdict = 'ETF为主，防御性较好 🛡️';
+  else if (etfPct >= 30) ratioVerdict = 'ETF比例适中 ⚖️';
+  else if (etfPct > 0) ratioVerdict = 'ETF比例偏低，建议增加指数配置 📉';
+  else ratioVerdict = '全部为个股，风险集中度高 ⚠️';
+
+  content.innerHTML = `
+    <div class="industry-bar-row">
+      <span class="industry-bar-label">ETF</span>
+      <div class="industry-bar-track">
+        <div class="industry-bar-fill" style="width:${etfPct}%;background:var(--green)"></div>
+      </div>
+      <span class="industry-bar-pct">${etfPct.toFixed(1)}%</span>
+    </div>
+    <div class="industry-bar-row">
+      <span class="industry-bar-label">个股</span>
+      <div class="industry-bar-track">
+        <div class="industry-bar-fill" style="width:${stockPct}%;background:var(--accent)"></div>
+      </div>
+      <span class="industry-bar-pct">${stockPct.toFixed(1)}%</span>
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:0.85em;color:var(--muted)">
+      ${ratioVerdict}
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════
+//  键盘快捷键
+// ══════════════════════════════════════
+document.getElementById('codeInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addHolding();
+  }
+});
+document.getElementById('qtyInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addHolding();
+  }
+});
+
+// ══════════════════════════════════════
+//  初始渲染
+// ══════════════════════════════════════
+renderAll();
+</script>
+<!-- ═══ 付费模块 · 统一模板 ═══ -->
+<style>
+.pay-section {
+  background: var(--card); border: 1px solid rgba(163,113,247,0.3); border-radius: 14px;
+  padding: 20px; text-align: center; margin-bottom: 16px;
+}
+.pay-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; color: var(--text); }
+.pay-desc { font-size: 0.8em; color: var(--muted); margin-bottom: 14px; }
+.pay-price { font-size: 2em; font-weight: 800; color: var(--accent); }
+.pay-qr {
+  width: 160px; height: 160px; border: 1px solid var(--border); border-radius: 10px;
+  margin: 10px auto; display: flex; align-items: center; justify-content: center;
+  background: #fff; color: #333; font-size: 0.8em;
+}
+.pay-note { font-size: 0.72em; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+</style>
+
+<div class="pay-section" id="paySection">
+  <div class="pay-title">💰 解锁完整功能</div>
+  <div class="pay-desc">觉得有用？扫码支持，解锁所有高级功能</div>
+  <div class="pay-price">¥3.9</div>
+  <div class="pay-qr" id="payQR">
+    <!-- 请替换为您的微信/支付宝收款码 -->
+    <span style="text-align:center;padding:10px;line-height:1.4">
+      📱<br>微信/支付宝<br>扫码支付<br>
+      <span style="font-size:0.7em;color:#999">替换为<br>您的收款码</span>
+    </span>
+  </div>
+  <div class="pay-note">
+    付款后截图发送给客服，获取解锁码<br>
+    或直接扫码 → 工具自动解锁 ✨
+  </div>
+</div>
+
+</body>
+</html>

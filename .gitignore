@@ -1,0 +1,6 @@
+# .gitignore
+*.pyc
+__pycache__/
+build_tools.py
+market-thermometer-template.html
+.DS_Store

@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>成本精算器 | A股交易费用</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --border: #21262d;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d2991d;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  min-height: 100vh;
+  padding: 16px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ── Header ── */
+.header {
+  text-align: center;
+  padding: 20px 0 8px;
+}
+.header h1 {
+  font-size: 1.4em;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), #a371f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header .subtitle {
+  font-size: 0.78em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+.card-title {
+  font-size: 0.85em;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 14px;
+}
+
+/* ── Inputs ── */
+.input-group {
+  margin-bottom: 12px;
+}
+.input-group label {
+  display: block;
+  font-size: 0.82em;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+.input-row .input-group { flex:1; }
+input[type="number"] {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 1em;
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  transition: border-color 0.2s;
+}
+input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+input[type="number"]::placeholder { color: var(--muted); opacity:0.5; }
+
+/* ── Toggle ── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+.toggle-label {
+  font-size: 0.85em;
+  color: var(--text);
+}
+.toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  background: var(--border);
+  border-radius: 13px;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+.toggle-switch.active { background: var(--accent); }
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.25s;
+}
+.toggle-switch.active::after { left: 25px; }
+
+.market-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.market-btn {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.market-btn:hover { border-color: var(--accent); color: var(--text); }
+.market-btn.active {
+  background: rgba(88,166,255,0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Buttons ── */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--accent);
+  font-size: 0.95em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover { background: rgba(88,166,255,0.08); border-color: var(--accent); }
+.btn:active { transform: scale(0.98); }
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 1em;
+  padding: 16px;
+  border-radius: 12px;
+}
+.btn-primary:hover { background: #4794e5; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-sm {
+  width: auto;
+  padding: 8px 16px;
+  font-size: 0.82em;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* ── Big Result ── */
+.result-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 20px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.result-label {
+  font-size: 0.82em;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.result-number {
+  font-size: 3.2em;
+  font-weight: 800;
+  line-height: 1.1;
+  transition: color 0.3s;
+}
+.result-pct {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* ── Detail Rows ── */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-label {
+  font-size: 0.88em;
+  color: var(--text);
+}
+.detail-sub {
+  font-size: 0.72em;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.detail-value {
+  font-weight: 600;
+  font-size: 0.92em;
+  text-align: right;
+}
+.detail-value.mono {
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 0.85em;
+}
+.detail-subtitle {
+  font-size: 0.75em;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  padding: 14px 0 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+/* ── Expandable ── */
+.expand-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: var(--accent);
+  user-select: none;
+  transition: color 0.2s;
+}
+.expand-trigger:hover { color: #79b8ff; }
+.expand-trigger .arrow {
+  display: inline-block;
+  transition: transform 0.3s;
+}
+.expand-trigger.open .arrow { transform: rotate(180deg); }
+.collapsible {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.4s ease;
+}
+.collapsible.open { max-height: 2000px; }
+
+/* ── Break-even ── */
+.breakeven-highlight {
+  font-size: 1.5em;
+  font-weight: 700;
+  color: var(--yellow);
+  text-align: center;
+  padding: 12px 0;
+}
+.breakeven-pct {
+  font-size: 0.95em;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ── Position entries ── */
+.position-entry {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.position-entry input {
+  flex: 1;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9em;
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+}
+.position-entry input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.position-entry .del-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--red);
+  font-size: 1.1em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.position-entry .del-btn:hover {
+  background: rgba(248,81,73,0.12);
+  border-color: var(--red);
+}
+.position-summary {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.85em;
+}
+
+/* ── Disclaimer ── */
+.disclaimer {
+  font-size: 0.72em;
+  color: var(--muted);
+  text-align: center;
+  padding: 16px 0 32px;
+  line-height: 1.6;
+}
+
+/* ── Utility ── */
+.hidden { display: none !important; }
+.text-green { color: var(--green); }
+.text-red { color: var(--red); }
+.text-yellow { color: var(--yellow); }
+.text-accent { color: var(--accent); }
+.text-muted { color: var(--muted); }
+.fw-bold { font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ═══ Header ═══ -->
+<div class="header">
+  <h1>💰 成本精算器</h1>
+  <div class="subtitle">A股交易费用精确计算 · 沪市 / 深市</div>
+</div>
+
+<!-- ═══ Input Card ═══ -->
+<div class="card">
+  <div class="card-title">📋 交易参数</div>
+
+  <!-- Market -->
+  <div class="market-toggle" id="marketToggle">
+    <button class="market-btn active" data-market="sh">🏙️ 沪市 (60xxxx)</button>
+    <button class="market-btn" data-market="sz">🏢 深市 (00/30xxxx)</button>
+  </div>
+
+  <div class="input-row">
+    <div class="input-group">
+      <label>买入价 (元)</label>
+      <input type="number" id="buyPrice" placeholder="10.00" step="0.01" min="0.01" value="10.00">
+    </div>
+    <div class="input-group">
+      <label>卖出价 (元)</label>
+      <input type="number" id="sellPrice" placeholder="10.50" step="0.01" min="0.01" value="10.50">
+    </div>
+  </div>
+
+  <div class="input-group">
+    <label>交易股数 (1手=100股)</label>
+    <input type="number" id="shares" placeholder="1000" step="100" min="100" value="1000">
+  </div>
+
+  <div class="toggle-row">
+    <span class="toggle-label">📉 滑点成本 (默认万1)</span>
+    <div class="toggle-switch active" id="slippageToggle" onclick="toggleSlippage()"></div>
+  </div>
+
+  <div id="slippageRateRow">
+    <div class="input-group" style="margin-top:8px;">
+      <label>滑点费率</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="range" id="slippageSlider" min="0.1" max="5" step="0.1" value="1" style="flex:1;accent-color:var(--accent);">
+        <span id="slippageDisplay" style="font-size:0.85em;min-width:48px;text-align:right;font-family:'SF Mono',Consolas,Menlo,monospace;">万1.0</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="calculate()" style="margin-top:8px;">🔍 计算交易成本</button>
+</div>
+
+<!-- ═══ Result Section ═══ -->
+<div id="resultSection" class="hidden">
+
+  <!-- Big Number -->
+  <div class="result-section">
+    <div class="result-label">📊 净利润</div>
+    <div class="result-number" id="netProfit">--</div>
+    <div class="result-pct" id="netPct">--</div>
+  </div>
+
+  <!-- Fee Breakdown (expandable) -->
+  <div class="card">
+    <div class="expand-trigger open" id="expandTrigger" onclick="toggleDetails()">
+      <span>📑 费用明细</span>
+      <span class="arrow">▼</span>
+    </div>
+    <div class="collapsible open" id="detailsPanel">
+      <!-- Buy -->
+      <div class="detail-subtitle">📥 买入费用</div>
+      <div class="detail-row"><span class="detail-label">成交金额</span><span class="detail-value mono" id="detail-buy-amount">--</span></div>
+      <div class="detail-row"><span class="detail-label">佣金<span class="detail-sub">(万3 · 最低5元)</span></span><span class="detail-value mono" id="detail-buy-commission">--</span></div>
+      <div class="detail-row"><span class="detail-label">过户费<span class="detail-sub" id="detail-transfer-label-buy">(沪市万0.2)</span></span><span class="detail-value mono" id="detail-buy-transfer">--</span></div>
+      <div class="detail-row"><span class="detail-label">滑点成本<span class="detail-sub" id="detail-slip-label-buy">(万1.0)</span></span><span class="detail-value mono" id="detail-buy-slippage">--</span></div>
+      <div class="detail-row" style="border-top:1px solid var(--border);margin-top:4px;">
+        <span class="detail-label fw-bold">买入总成本</span>
+        <span class="detail-value mono fw-bold text-red" id="detail-total-buy">--</span>
+      </div>
+
+      <!-- Sell -->
+      <div class="detail-subtitle" style="margin-top:8px;">📤 卖出费用</div>
+      <div class="detail-row"><span class="detail-label">成交金额</span><span class="detail-value mono" id="detail-sell-amount">--</span></div>
+      <div class="detail-row"><span class="detail-label">佣金<span class="detail-sub">(万3 · 最低5元)</span></span><span class="detail-value mono" id="detail-sell-commission">--</span></div>
+      <div class="detail-row"><span class="detail-label">印花税<span class="detail-sub">(万13 · 仅卖出)</span></span><span class="detail-value mono" id="detail-sell-stamp">--</span></div>
+      <div class="detail-row"><span class="detail-label">过户费<span class="detail-sub" id="detail-transfer-label-sell">(沪市万0.2)</span></span><span class="detail-value mono" id="detail-sell-transfer">--</span></div>
+      <div class="detail-row"><span class="detail-label">滑点成本<span class="detail-sub" id="detail-slip-label-sell">(万1.0)</span></span><span class="detail-value mono" id="detail-sell-slippage">--</span></div>
+      <div class="detail-row" style="border-top:1px solid var(--border);margin-top:4px;">
+        <span class="detail-label fw-bold">卖出总收入</span>
+        <span class="detail-value mono fw-bold text-green" id="detail-total-sell">--</span>
+      </div>
+
+      <!-- Net -->
+      <div class="detail-row" style="border-top:2px solid var(--border);padding-top:14px;margin-top:4px;">
+        <span class="detail-label fw-bold" style="font-size:1em;">💰 净利润</span>
+        <span class="detail-value fw-bold" style="font-size:1.05em;" id="detail-net-profit">--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Break-even -->
+  <div class="card">
+    <div class="card-title">🎯 盈亏平衡点</div>
+    <div class="breakeven-highlight" id="breakevenPrice">--</div>
+    <div class="breakeven-pct" id="breakevenPct">--</div>
+    <div style="font-size:0.78em;color:var(--muted);text-align:center;margin-top:4px;">
+      卖出价≥此价格则不亏损
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ 加仓计算 ═══ -->
+<div class="card">
+  <div class="card-title">📦 加仓计算（多次买入合并）</div>
+  <p style="font-size:0.78em;color:var(--muted);margin-bottom:14px;">
+    输入多次买入的价格和股数，自动计算综合持仓成本与盈亏
+  </p>
+
+  <div id="positionEntries">
+    <div class="position-entry">
+      <input type="number" placeholder="买入价" step="0.01" min="0.01" class="pos-price" value="10.00">
+      <input type="number" placeholder="股数" step="100" min="100" class="pos-shares" value="500">
+      <button class="del-btn" onclick="removePosition(this)" title="删除">✕</button>
+    </div>
+    <div class="position-entry">
+      <input type="number" placeholder="买入价" step="0.01" min="0.01" class="pos-price" value="9.50">
+      <input type="number" placeholder="股数" step="100" min="100" class="pos-shares" value="500">
+      <button class="del-btn" onclick="removePosition(this)" title="删除">✕</button>
+    </div>
+  </div>
+
+  <button class="btn btn-sm" onclick="addPosition()" style="margin-bottom:4px;">＋ 添加一笔</button>
+
+  <div class="input-group" style="margin-top:10px;">
+    <label>当前市价 (元)</label>
+    <input type="number" id="currentPrice" placeholder="10.50" step="0.01" min="0.01" value="10.50">
+  </div>
+
+  <button class="btn-primary" onclick="calcPosition()" style="margin-top:4px;">📊 计算持仓盈亏</button>
+
+  <div id="positionResult" class="position-summary hidden">
+    <div class="summary-row"><span>总股数</span><span class="fw-bold" id="pos-total-shares">--</span></div>
+    <div class="summary-row"><span>总投入 (含费用)</span><span class="fw-bold text-red" id="pos-total-cost">--</span></div>
+    <div class="summary-row"><span>加权均价 (净)</span><span class="fw-bold" id="pos-avg-price">--</span></div>
+    <div class="summary-row"><span>当前市值</span><span class="fw-bold text-green" id="pos-market-value">--</span></div>
+    <div class="summary-row" style="font-size:1.05em;padding-top:8px;margin-top:4px;border-top:2px solid var(--border);">
+      <span class="fw-bold">💰 浮动盈亏</span>
+      <span class="fw-bold" style="font-size:1.1em;" id="pos-pl">--</span>
+    </div>
+    <div class="summary-row"><span>盈亏比例</span><span class="fw-bold" id="pos-pl-pct">--</span></div>
+  </div>
+</div>
+
+<!-- ═══ Disclaimer ═══ -->
+<p class="disclaimer">
+  ⚠️ 仅供参考，不构成投资建议<br>
+  费率基于当前A股市场通用标准，实际费率以券商为准<br>
+  佣金万3（最低5元）· 印花税万13（仅卖出）· 过户费沪市万0.2
+</p>
+
+<script>
+// ═══════════════════════════════
+//  State
+// ═══════════════════════════════
+let market = 'sh';
+let slippageEnabled = true;
+
+// ═══════════════════════════════
+//  Market toggle
+// ═══════════════════════════════
+document.getElementById('marketToggle').addEventListener('click', function(e) {
+  const btn = e.target.closest('.market-btn');
+  if (!btn) return;
+  this.querySelectorAll('.market-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  market = btn.dataset.market;
+  calculate();
+});
+
+// ═══════════════════════════════
+//  Slippage toggle & slider
+// ═══════════════════════════════
+function toggleSlippage() {
+  slippageEnabled = !slippageEnabled;
+  const sw = document.getElementById('slippageToggle');
+  sw.classList.toggle('active', slippageEnabled);
+  document.getElementById('slippageRateRow').style.display = slippageEnabled ? 'block' : 'none';
+  calculate();
+}
+
+const slippageSlider = document.getElementById('slippageSlider');
+const slippageDisplay = document.getElementById('slippageDisplay');
+slippageSlider.addEventListener('input', function() {
+  slippageDisplay.textContent = '万' + parseFloat(this.value).toFixed(1);
+  calculate();
+});
+function getSlippageRate() {
+  return parseFloat(slippageSlider.value) / 10000;
+}
+
+// ═══════════════════════════════
+//  Details expand/collapse
+// ═══════════════════════════════
+function toggleDetails() {
+  const trigger = document.getElementById('expandTrigger');
+  const panel = document.getElementById('detailsPanel');
+  const isOpen = panel.classList.contains('open');
+  trigger.classList.toggle('open', !isOpen);
+  panel.classList.toggle('open', !isOpen);
+}
+
+// ═══════════════════════════════
+//  Core calculation
+// ═══════════════════════════════
+function round2(n) { return Math.round(n * 100) / 100; }
+
+function calcFees(price, shares, isSell) {
+  const amount = price * shares;
+  const isSH = market === 'sh';
+  const slipRate = slippageEnabled ? getSlippageRate() : 0;
+
+  // Commission: 万3, min ¥5
+  const commission = Math.max(amount * 0.0003, 5);
+
+  // Stamp duty: only on sell, 万13
+  const stamp = isSell ? amount * 0.0013 : 0;
+
+  // Transfer fee: SH 万0.2 both buy and sell
+  const transfer = isSH ? amount * 0.00002 : 0;
+
+  // Slippage
+  const slippage = amount * slipRate;
+
+  const totalFees = commission + stamp + transfer + slippage;
+
+  return {
+    amount: round2(amount),
+    commission: round2(commission),
+    stamp: round2(stamp),
+    transfer: round2(transfer),
+    slippage: round2(slippage),
+    totalFees: round2(totalFees),
+    total: isSell ? round2(amount - totalFees) : round2(amount + totalFees),
+  };
+}
+
+function calculate() {
+  const buyPrice = parseFloat(document.getElementById('buyPrice').value) || 0;
+  const sellPrice = parseFloat(document.getElementById('sellPrice').value) || 0;
+  const shares = parseInt(document.getElementById('shares').value) || 0;
+
+  if (buyPrice <= 0 || sellPrice <= 0 || shares <= 0) {
+    document.getElementById('resultSection').classList.add('hidden');
+    return;
+  }
+
+  // Update labels
+  const isSH = market === 'sh';
+  const slipRate = slippageEnabled ? getSlippageRate() : 0;
+  const slipLabel = '万' + (slipRate * 10000).toFixed(1);
+  const transferLabel = isSH ? '(沪市万0.2)' : '(深市免)';
+
+  document.getElementById('detail-transfer-label-buy').textContent = transferLabel;
+  document.getElementById('detail-transfer-label-sell').textContent = transferLabel;
+  document.getElementById('detail-slip-label-buy').textContent = slippageEnabled ? '(' + slipLabel + ')' : '(已关闭)';
+  document.getElementById('detail-slip-label-sell').textContent = slippageEnabled ? '(' + slipLabel + ')' : '(已关闭)';
+
+  const buy = calcFees(buyPrice, shares, false);
+  const sell = calcFees(sellPrice, shares, true);
+
+  const netProfit = round2(sell.total - buy.total);
+  const netPct = round2((netProfit / buy.total) * 100);
+
+  // ── Fill detail rows ──
+  document.getElementById('detail-buy-amount').textContent = '¥' + buy.amount.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('detail-buy-commission').textContent = '¥' + buy.commission.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('detail-buy-transfer').textContent = '¥' + buy.transfer.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('detail-buy-slippage').textContent = '¥' + buy.slippage.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('detail-total-buy').textContent = '¥' + buy.total.toLocaleString('zh-CN', {minimumFractionDigits:2});
+
+  document.getElementById('detail-sell-amount').textContent = '¥' + sell.amount.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('detail-sell-commission').textContent = '¥' + sell.commission.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('detail-sell-stamp').textContent = '¥' + sell.stamp.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('detail-sell-transfer').textContent = '¥' + sell.transfer.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('detail-sell-slippage').textContent = '¥' + sell.slippage.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('detail-total-sell').textContent = '¥' + sell.total.toLocaleString('zh-CN', {minimumFractionDigits:2});
+
+  const detailNet = document.getElementById('detail-net-profit');
+  detailNet.textContent = '¥' + netProfit.toLocaleString('zh-CN', {minimumFractionDigits:2, signDisplay:'exceptZero'});
+  detailNet.className = 'detail-value fw-bold ' + (netProfit >= 0 ? 'text-green' : 'text-red');
+  detailNet.style.fontSize = '1.05em';
+
+  // ── Big result ──
+  const npEl = document.getElementById('netProfit');
+  npEl.textContent = (netProfit >= 0 ? '+' : '') + '¥' + netProfit.toLocaleString('zh-CN', {minimumFractionDigits:2});
+  npEl.style.color = netProfit >= 0 ? 'var(--green)' : 'var(--red)';
+
+  const npPctEl = document.getElementById('netPct');
+  npPctEl.textContent = (netPct >= 0 ? '+' : '') + netPct.toFixed(2) + '%';
+  npPctEl.style.color = netPct >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // ── Break-even ──
+  const breakEven = calcBreakEven(buyPrice, shares, buy);
+  document.getElementById('breakevenPrice').textContent = '¥' + breakEven.price.toFixed(3);
+  document.getElementById('breakevenPct').textContent =
+    '需上涨 ' + (breakEven.pct >= 0 ? '+' : '') + breakEven.pct.toFixed(2) + '% 才能回本';
+
+  // Show results
+  document.getElementById('resultSection').classList.remove('hidden');
+}
+
+// ═══════════════════════════════
+//  Break-even (bisection)
+// ═══════════════════════════════
+function calcBreakEven(buyPrice, shares, buyFees) {
+  const buyTotal = buyFees.total;
+  const isSH = market === 'sh';
+  const slipRate = slippageEnabled ? getSlippageRate() : 0;
+
+  function netAtSellPrice(p) {
+    const amount = p * shares;
+    const commission = Math.max(amount * 0.0003, 5);
+    const stamp = amount * 0.0013;
+    const transfer = isSH ? amount * 0.00002 : 0;
+    const slippage = amount * slipRate;
+    return amount - commission - stamp - transfer - slippage - buyTotal;
+  }
+
+  // Binary search for break-even
+  let lo = buyPrice * 0.9;
+  let hi = buyPrice * 1.5;
+
+  // Expand hi if needed
+  while (netAtSellPrice(hi) < 0 && hi < buyPrice * 10) {
+    hi *= 1.5;
+  }
+
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    if (netAtSellPrice(mid) >= 0) {
+      hi = mid;
+    } else {
+      lo = mid;
+    }
+    if (Math.abs(hi - lo) < 0.00001) break;
+  }
+
+  const bePrice = round2((lo + hi) / 2 * 1000) / 1000; // 3 decimal places
+  const bePct = round2(((bePrice - buyPrice) / buyPrice) * 100);
+
+  return { price: bePrice, pct: bePct };
+}
+
+// ═══════════════════════════════
+//  加仓计算 (Position averaging)
+// ═══════════════════════════════
+function addPosition() {
+  const container = document.getElementById('positionEntries');
+  const div = document.createElement('div');
+  div.className = 'position-entry';
+  div.innerHTML = `
+    <input type="number" placeholder="买入价" step="0.01" min="0.01" class="pos-price" value="">
+    <input type="number" placeholder="股数" step="100" min="100" class="pos-shares" value="">
+    <button class="del-btn" onclick="removePosition(this)" title="删除">✕</button>
+  `;
+  container.appendChild(div);
+}
+
+function removePosition(btn) {
+  const container = document.getElementById('positionEntries');
+  const entries = container.querySelectorAll('.position-entry');
+  if (entries.length <= 1) return; // keep at least one
+  btn.closest('.position-entry').remove();
+  calcPosition();
+}
+
+function calcPosition() {
+  const entries = document.querySelectorAll('#positionEntries .position-entry');
+  const currentPrice = parseFloat(document.getElementById('currentPrice').value) || 0;
+  const isSH = market === 'sh';
+  const slipRate = slippageEnabled ? getSlippageRate() : 0;
+
+  let totalShares = 0;
+  let totalCost = 0;
+  let totalAmount = 0;
+
+  for (const entry of entries) {
+    const price = parseFloat(entry.querySelector('.pos-price').value) || 0;
+    const shares = parseInt(entry.querySelector('.pos-shares').value) || 0;
+    if (price <= 0 || shares <= 0) continue;
+
+    const amount = price * shares;
+    const commission = Math.max(amount * 0.0003, 5);
+    const transfer = isSH ? amount * 0.00002 : 0;
+    const slippage = amount * slipRate;
+    const cost = amount + commission + transfer + slippage;
+
+    totalShares += shares;
+    totalCost += cost;
+    totalAmount += amount;
+  }
+
+  if (totalShares === 0) {
+    document.getElementById('positionResult').classList.add('hidden');
+    return;
+  }
+
+  const avgNetPrice = totalCost / totalShares;
+  const marketValue = currentPrice * totalShares;
+  const pl = marketValue - totalCost;
+  const plPct = (pl / totalCost) * 100;
+
+  document.getElementById('pos-total-shares').textContent = totalShares.toLocaleString('zh-CN') + ' 股';
+  document.getElementById('pos-total-cost').textContent = '¥' + round2(totalCost).toLocaleString('zh-CN', {minimumFractionDigits:2});
+  document.getElementById('pos-avg-price').textContent = '¥' + round2(avgNetPrice).toFixed(3);
+  document.getElementById('pos-market-value').textContent = '¥' + round2(marketValue).toLocaleString('zh-CN', {minimumFractionDigits:2});
+
+  const plEl = document.getElementById('pos-pl');
+  plEl.textContent = (pl >= 0 ? '+' : '') + '¥' + round2(pl).toLocaleString('zh-CN', {minimumFractionDigits:2});
+  plEl.className = 'fw-bold ' + (pl >= 0 ? 'text-green' : 'text-red');
+  plEl.style.fontSize = '1.1em';
+
+  const plPctEl = document.getElementById('pos-pl-pct');
+  plPctEl.textContent = (plPct >= 0 ? '+' : '') + round2(plPct).toFixed(2) + '%';
+  plPctEl.className = 'fw-bold ' + (plPct >= 0 ? 'text-green' : 'text-red');
+
+  document.getElementById('positionResult').classList.remove('hidden');
+}
+
+// ═══════════════════════════════
+//  Auto-calc on input change
+// ═══════════════════════════════
+['buyPrice','sellPrice','shares','currentPrice'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', function() {
+    if (id === 'currentPrice') {
+      calcPosition();
+    } else {
+      calculate();
+    }
+  });
+});
+
+// ═══════════════════════════════
+//  Init
+// ═══════════════════════════════
+calculate();
+calcPosition();
+</script>
+
+<!-- ═══ 付费模块 · 统一模板 ═══ -->
+<style>
+.pay-section {
+  background: var(--card); border: 1px solid rgba(163,113,247,0.3); border-radius: 14px;
+  padding: 20px; text-align: center; margin-bottom: 16px;
+}
+.pay-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; color: var(--text); }
+.pay-desc { font-size: 0.8em; color: var(--muted); margin-bottom: 14px; }
+.pay-price { font-size: 2em; font-weight: 800; color: var(--accent); }
+.pay-qr {
+  width: 160px; height: 160px; border: 1px solid var(--border); border-radius: 10px;
+  margin: 10px auto; display: flex; align-items: center; justify-content: center;
+  background: #fff; color: #333; font-size: 0.8em;
+}
+.pay-note { font-size: 0.72em; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+</style>
+
+<div class="pay-section" id="paySection">
+  <div class="pay-title">💰 解锁完整功能</div>
+  <div class="pay-desc">觉得有用？扫码支持，解锁所有高级功能</div>
+  <div class="pay-price">¥3.9</div>
+  <div class="pay-qr" id="payQR">
+    <!-- 请替换为您的微信/支付宝收款码 -->
+    <span style="text-align:center;padding:10px;line-height:1.4">
+      📱<br>微信/支付宝<br>扫码支付<br>
+      <span style="font-size:0.7em;color:#999">替换为<br>您的收款码</span>
+    </span>
+  </div>
+  <div class="pay-note">
+    付款后截图发送给客服，获取解锁码<br>
+    或直接扫码 → 工具自动解锁 ✨
+  </div>
+</div>
+
+</body>
+</html>

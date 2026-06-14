@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>止损线计算器 | 量化工具箱</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d2991d;
+  --orange: #f0883e;
+  --border: #30363d;
+  --muted: #8b949e;
+  --input-bg: #0d1117;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px;
+  line-height: 1.6;
+}
+.container { max-width: 720px; margin: 0 auto; }
+
+/* Header */
+.header {
+  text-align: center;
+  padding: 20px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+.header .subtitle {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 16px;
+  margin-bottom: 14px;
+}
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .icon { font-size: 1.1rem; }
+
+/* Form */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.form-group input, .form-group select {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.form-group input:focus, .form-group select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(88,166,255,0.15);
+}
+.form-group input::placeholder { color: #484f58; }
+
+/* Risk presets */
+.risk-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.risk-tag {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--card);
+  color: var(--muted);
+  user-select: none;
+}
+.risk-tag:hover { border-color: var(--accent); color: var(--text); }
+.risk-tag.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Results */
+.result-section {
+  margin-bottom: 20px;
+}
+.section-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+/* Stop price cards */
+.stop-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 500px) {
+  .stop-cards { grid-template-columns: 1fr; }
+}
+.stop-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 12px;
+  text-align: center;
+}
+.stop-card .st-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.stop-card .st-price {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stop-card .st-detail {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.st-red .st-price { color: var(--red); }
+.st-orange .st-price { color: var(--orange); }
+
+/* Running loss bar */
+.loss-bar-wrap {
+  background: var(--bg);
+  border-radius: 6px;
+  overflow: hidden;
+  height: 8px;
+  margin: 6px 0 2px;
+}
+.loss-bar {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.35s ease, background 0.35s ease;
+}
+
+/* Comparison table */
+.comp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.comp-table th, .comp-table td {
+  padding: 9px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.comp-table th {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  background: rgba(22,27,34,0.6);
+}
+.comp-table td { font-variant-numeric: tabular-nums; }
+.comp-table .plan-name { font-weight: 600; color: var(--accent); text-align: left; }
+.comp-table .val-green { color: var(--green); }
+.comp-table .val-yellow { color: var(--yellow); }
+.comp-table .val-red { color: var(--red); }
+.comp-table .val-orange { color: var(--orange); }
+
+.comp-table tr.highlight {
+  background: rgba(88,166,255,0.05);
+}
+
+/* Trailing stop section */
+.trailing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (max-width: 400px) {
+  .trailing-grid { grid-template-columns: 1fr; }
+}
+.trail-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+.trail-item .t-label { font-size: 0.72rem; color: var(--muted); }
+.trail-item .t-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--yellow);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Summary */
+.summary-box {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (max-width: 400px) {
+  .summary-box { grid-template-columns: 1fr; }
+}
+.summary-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.summary-item .s-label { font-size: 0.72rem; color: var(--muted); }
+.summary-item .s-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Warning */
+.warning-bar {
+  text-align: center;
+  padding: 14px;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.warning-bar span { color: var(--yellow); }
+.warning-bar a { color: var(--accent); text-decoration: none; }
+
+/* Utility */
+.mono { font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.text-green { color: var(--green); }
+.text-red { color: var(--red); }
+.text-yellow { color: var(--yellow); }
+.text-orange { color: var(--orange); }
+.hidden { display: none; }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 30px 16px;
+  color: var(--muted);
+}
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 8px; }
+.empty-state p { font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🛑 止损线计算器</h1>
+    <div class="subtitle">多策略止损方案对比 · 风险自适应</div>
+  </div>
+
+  <!-- Input Card -->
+  <div class="card" id="inputCard">
+    <div class="card-title"><span class="icon">📋</span> 交易参数</div>
+
+    <!-- Risk presets -->
+    <div class="risk-presets" id="riskPresets">
+      <span class="risk-tag" data-preset="conservative">🛡️ 保守</span>
+      <span class="risk-tag active" data-preset="neutral">⚖️ 中性</span>
+      <span class="risk-tag" data-preset="aggressive">🔥 激进</span>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>入场价格</label>
+        <input type="number" id="entryPrice" placeholder="0.00" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>仓位比例 (%)</label>
+        <input type="number" id="positionPct" placeholder="20" step="any" min="0" max="100">
+      </div>
+      <div class="form-group">
+        <label>总资金</label>
+        <input type="number" id="totalCapital" placeholder="10000" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>风险偏好</label>
+        <select id="riskLevel">
+          <option value="conservative">保守 (止损3% / 仓位10% / 单亏1%)</option>
+          <option value="neutral" selected>中性 (止损5% / 仓位20% / 单亏2%)</option>
+          <option value="aggressive">激进 (止损8% / 仓位30% / 单亏3%)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsArea">
+
+    <!-- Empty state -->
+    <div class="card empty-state" id="emptyState">
+      <div class="icon">📊</div>
+      <p>输入参数后自动展示多方案止损对比</p>
+    </div>
+
+    <!-- Actual results (hidden by default) -->
+    <div id="resultsContent" class="hidden">
+
+      <!-- Stop price cards -->
+      <div class="result-section">
+        <div class="section-label">📌 止损价位</div>
+        <div class="stop-cards" id="stopCards"></div>
+      </div>
+
+      <!-- Risk summary -->
+      <div class="result-section">
+        <div class="section-label">📊 风险概览</div>
+        <div class="summary-box" id="riskSummary"></div>
+      </div>
+
+      <!-- Plan comparison table -->
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> 方案 A / B / C 对比</div>
+        <div style="overflow-x:auto;">
+          <table class="comp-table" id="compTable"></table>
+        </div>
+      </div>
+
+      <!-- Trailing stop reference -->
+      <div class="card">
+        <div class="card-title"><span class="icon">📈</span> 移动止损参考</div>
+        <div class="trailing-grid" id="trailingGrid"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Warning -->
+  <div class="warning-bar">
+    ⚠️ <span>风险提示</span>：本工具仅供学习参考，不构成投资建议。止损无法保证成交价，市场剧烈波动可能导致滑点。<br>
+    投资有风险，入市需谨慎。请根据自身情况独立决策 · <a href="https://hermes-agent.nousresearch.com/docs" target="_blank">Hermes Agent</a>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ─── RISK PRESETS ──────────────────────────────
+  const PRESETS = {
+    conservative: {
+      label: '保守',
+      stopLossPct: 3,
+      positionPct: 10,
+      singleLossPct: 1
+    },
+    neutral: {
+      label: '中性',
+      stopLossPct: 5,
+      positionPct: 20,
+      singleLossPct: 2
+    },
+    aggressive: {
+      label: '激进',
+      stopLossPct: 8,
+      positionPct: 30,
+      singleLossPct: 3
+    }
+  };
+
+  // ─── DOM REFS ──────────────────────────────────
+  const entryPriceEl  = document.getElementById('entryPrice');
+  const positionPctEl = document.getElementById('positionPct');
+  const totalCapitalEl= document.getElementById('totalCapital');
+  const riskLevelEl   = document.getElementById('riskLevel');
+  const riskPresets   = document.getElementById('riskPresets');
+  const emptyState    = document.getElementById('emptyState');
+  const resultsContent= document.getElementById('resultsContent');
+  const stopCards     = document.getElementById('stopCards');
+  const riskSummary   = document.getElementById('riskSummary');
+  const compTable     = document.getElementById('compTable');
+  const trailingGrid  = document.getElementById('trailingGrid');
+
+  // ─── UTILS ─────────────────────────────────────
+  function fmtPrice(v) {
+    return v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  }
+  function fmtMoney(v) {
+    return v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtPct(v, decimals) {
+    decimals = (decimals === undefined) ? 2 : decimals;
+    return v.toFixed(decimals) + '%';
+  }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function getPreset() {
+    return PRESETS[riskLevelEl.value] || PRESETS.neutral;
+  }
+
+  // ─── CALCULATION ENGINE ────────────────────────
+  function calculate() {
+    const entryPrice  = parseFloat(entryPriceEl.value);
+    const positionPct = parseFloat(positionPctEl.value);
+    const totalCapital= parseFloat(totalCapitalEl.value);
+    const preset      = getPreset();
+
+    if (isNaN(entryPrice) || entryPrice <= 0 || isNaN(positionPct) || positionPct <= 0 || isNaN(totalCapital) || totalCapital <= 0) {
+      return null;
+    }
+
+    const positionSize = totalCapital * (positionPct / 100);
+    const shares = positionSize / entryPrice;
+
+    // ── Fixed percentage stops ──
+    const stopPct1 = clamp(preset.stopLossPct * 0.6, 1, 30);   // Plan A: 更紧
+    const stopPct2 = preset.stopLossPct;                        // Plan B: 标准
+    const stopPct3 = clamp(preset.stopLossPct * 1.5, 1.5, 40); // Plan C: 更宽
+
+    const stopPriceA = entryPrice * (1 - stopPct1 / 100);
+    const stopPriceB = entryPrice * (1 - stopPct2 / 100);
+    const stopPriceC = entryPrice * (1 - stopPct3 / 100);
+
+    const lossPerShareA = entryPrice - stopPriceA;
+    const lossPerShareB = entryPrice - stopPriceB;
+    const lossPerShareC = entryPrice - stopPriceC;
+
+    const totalLossA = lossPerShareA * shares;
+    const totalLossB = lossPerShareB * shares;
+    const totalLossC = lossPerShareC * shares;
+
+    const lossPctOfCapitalA = (totalLossA / totalCapital) * 100;
+    const lossPctOfCapitalB = (totalLossB / totalCapital) * 100;
+    const lossPctOfCapitalC = (totalLossC / totalCapital) * 100;
+
+    // ── Capital-based stops (总资金1%/2%/3%) ──
+    const capitalStops = [1, 2, 3].map(pct => {
+      const maxLoss = totalCapital * (pct / 100);
+      const lossPerShare = maxLoss / shares;
+      const stopPrice = entryPrice - lossPerShare;
+      const actualStopPct = (lossPerShare / entryPrice) * 100;
+      return { pct, stopPrice, lossPerShare, actualStopPct, maxLoss };
+    });
+
+    // ── Trailing stop references ──
+    const trailingRefs = [
+      { label: 'ATR 1× 移动止损', pct: clamp(preset.stopLossPct * 0.5, 1, 15) },
+      { label: 'ATR 2× 移动止损', pct: clamp(preset.stopLossPct * 0.8, 1.5, 20) },
+      { label: '近期低点止损', pct: clamp(preset.stopLossPct * 0.7, 1, 18) },
+      { label: '均线止损 (MA20)', pct: clamp(preset.stopLossPct * 0.6, 1, 15) }
+    ];
+
+    return {
+      entryPrice, positionPct, totalCapital, preset, positionSize, shares,
+      plans: [
+        { name: 'A', desc: '紧止损', stopPct: stopPct1, stopPrice: stopPriceA, lossPerShare: lossPerShareA, totalLoss: totalLossA, lossPctOfCapital: lossPctOfCapitalA },
+        { name: 'B', desc: '标准止损', stopPct: stopPct2, stopPrice: stopPriceB, lossPerShare: lossPerShareB, totalLoss: totalLossB, lossPctOfCapital: lossPctOfCapitalB },
+        { name: 'C', desc: '宽止损', stopPct: stopPct3, stopPrice: stopPriceC, lossPerShare: lossPerShareC, totalLoss: totalLossC, lossPctOfCapital: lossPctOfCapitalC }
+      ],
+      capitalStops,
+      trailingRefs
+    };
+  }
+
+  // ─── RENDER ────────────────────────────────────
+  function render(r) {
+    if (!r) {
+      emptyState.classList.remove('hidden');
+      resultsContent.classList.add('hidden');
+      return;
+    }
+    emptyState.classList.add('hidden');
+    resultsContent.classList.remove('hidden');
+
+    const bestPlan = r.plans.reduce((best, p) =>
+      Math.abs(p.lossPctOfCapital - r.preset.singleLossPct) < Math.abs(best.lossPctOfCapital - r.preset.singleLossPct) ? p : best
+    );
+
+    // ── Stop price cards ──
+    stopCards.innerHTML = r.plans.map(p => {
+      const className = p.name === bestPlan.name ? 'st-green' : (p.name === 'C' ? 'st-orange' : 'st-red');
+      return `
+        <div class="stop-card ${className}">
+          <div class="st-label">方案 ${p.name} · ${p.desc}</div>
+          <div class="st-price">¥${fmtPrice(p.stopPrice)}</div>
+          <div class="st-detail">-${fmtPct(p.stopPct, 1)} · 每股亏 ¥${fmtPrice(p.lossPerShare)}</div>
+        </div>`;
+    }).join('');
+
+    // ── Risk summary ──
+    const bestCapStop = r.capitalStops.reduce((best, cs) =>
+      Math.abs(cs.pct - r.preset.singleLossPct) < Math.abs(best.pct - r.preset.singleLossPct) ? cs : best
+    );
+
+    riskSummary.innerHTML = `
+      <div class="summary-item">
+        <div class="s-label">📥 入场价</div>
+        <div class="s-value">¥${fmtPrice(r.entryPrice)}</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">💼 仓位资金</div>
+        <div class="s-value">¥${fmtMoney(r.positionSize)}</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">📦 持仓数量</div>
+        <div class="s-value mono">${sharesDisplay(r.shares)}</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">🎯 推荐方案</div>
+        <div class="s-value" style="color:var(--accent);">
+          ${bestPlan.name} · ¥${fmtPrice(bestPlan.stopPrice)}
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">💰 资金止损参考</div>
+        <div class="s-value" style="color:var(--yellow);">
+          ${bestCapStop.pct}% · ¥${fmtPrice(bestCapStop.stopPrice)}
+        </div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">⚠️ 最大单笔亏损</div>
+        <div class="s-value" style="color:var(--red);">
+          ¥${fmtMoney(bestPlan.totalLoss)} (${fmtPct(bestPlan.lossPctOfCapital)})
+        </div>
+      </div>
+    `;
+
+    // ── Comparison table ──
+    compTable.innerHTML = `
+      <thead>
+        <tr>
+          <th>方案</th>
+          <th>止损%</th>
+          <th>止损价</th>
+          <th>每股亏损</th>
+          <th>总亏损</th>
+          <th>占总资金%</th>
+          <th>盈亏比(1:2)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${r.plans.map(p => {
+          const isBest = p.name === bestPlan.name;
+          const rrTarget = r.entryPrice + (r.entryPrice - p.stopPrice) * 2; // 1:2 risk-reward target
+          const lossColor = p.lossPctOfCapital <= r.preset.singleLossPct ? 'val-green' :
+                            p.lossPctOfCapital <= r.preset.singleLossPct * 1.5 ? 'val-yellow' : 'val-red';
+          return `
+          <tr class="${isBest ? 'highlight' : ''}">
+            <td class="plan-name">${isBest ? '⭐ ' : ''}方案 ${p.name} · ${p.desc}</td>
+            <td class="val-red">-${fmtPct(p.stopPct, 1)}</td>
+            <td>¥${fmtPrice(p.stopPrice)}</td>
+            <td class="val-red">¥${fmtPrice(p.lossPerShare)}</td>
+            <td class="val-red">¥${fmtMoney(p.totalLoss)}</td>
+            <td class="${lossColor}">${fmtPct(p.lossPctOfCapital)}</td>
+            <td class="val-green">¥${fmtPrice(rrTarget)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>`;
+
+    // ── Trailing stop ──
+    trailingGrid.innerHTML = r.trailingRefs.map(tr => {
+      const stopPrice = r.entryPrice * (1 - tr.pct / 100);
+      return `
+        <div class="trail-item">
+          <div class="t-label">${tr.label}</div>
+          <div class="t-value">¥${fmtPrice(stopPrice)}</div>
+          <div class="st-detail">-${fmtPct(tr.pct, 1)} · 距入场 ¥${fmtPrice(r.entryPrice - stopPrice)}</div>
+        </div>`;
+    }).join('');
+  }
+
+  function sharesDisplay(shares) {
+    if (shares >= 10000) return (shares / 10000).toFixed(2) + '万股';
+    if (shares >= 1) return shares.toFixed(0) + '股';
+    return shares.toFixed(4) + '股';
+  }
+
+  // ─── EVENT HANDLERS ────────────────────────────
+  function recalc() {
+    const r = calculate();
+    render(r);
+  }
+
+  // Input changes
+  [entryPriceEl, positionPctEl, totalCapitalEl, riskLevelEl].forEach(el => {
+    el.addEventListener('input', recalc);
+  });
+
+  // Risk preset tags
+  riskPresets.addEventListener('click', function(e) {
+    const tag = e.target.closest('.risk-tag');
+    if (!tag) return;
+    const presetKey = tag.dataset.preset;
+    const preset = PRESETS[presetKey];
+    if (!preset) return;
+
+    // Update active tag
+    riskPresets.querySelectorAll('.risk-tag').forEach(t => t.classList.remove('active'));
+    tag.classList.add('active');
+
+    // Update select
+    riskLevelEl.value = presetKey;
+
+    // Update inputs if they're empty or zero
+    if (!positionPctEl.value || parseFloat(positionPctEl.value) === 0) {
+      positionPctEl.value = preset.positionPct;
+    }
+    if (!totalCapitalEl.value || parseFloat(totalCapitalEl.value) === 0) {
+      totalCapitalEl.value = 10000;
+    }
+
+    recalc();
+  });
+
+  // ─── INIT ──────────────────────────────────────
+  // Set default values
+  entryPriceEl.value = '';
+  positionPctEl.value = PRESETS.neutral.positionPct;
+  totalCapitalEl.value = 10000;
+  recalc();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>大盘温度计 | 量化工具箱</title>
+<style>
+:root {
+  --bg: #0d1117; --card: #161b22; --border: #21262d; --text: #c9d1d9;
+  --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --red: #f85149;
+  --yellow: #d2991d; --orange: #f0883e;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  min-height: 100vh; padding: 16px; max-width: 600px; margin: 0 auto;
+}
+.header { text-align: center; padding: 20px 0 8px; }
+.header h1 { font-size: 1.4em; font-weight: 700; background: linear-gradient(135deg, var(--accent), #a371f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.header .subtitle { font-size: 0.78em; color: var(--muted); margin-top: 4px; }
+.thermometer-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; text-align: center; margin-bottom: 16px; }
+.temp-label { font-size: 0.85em; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+.temp-number { font-size: 4em; font-weight: 800; line-height: 1; transition: color 0.5s; }
+.temp-verdict { font-size: 1.3em; font-weight: 700; margin-top: 6px; }
+.gauge-bar { height: 8px; border-radius: 4px; background: linear-gradient(to right, #3fb950, #d2991d, #f85149, #f85149); margin: 12px 0 6px; position: relative; }
+.gauge-dot { position: absolute; top: -6px; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 3px solid var(--bg); transition: left 0.6s cubic-bezier(0.34,1.56,0.64,1); box-shadow: 0 0 12px rgba(255,255,255,0.3); }
+.gauge-labels { display: flex; justify-content: space-between; font-size: 0.7em; color: var(--muted); margin-top: 4px; }
+.indices-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.idx-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 10px; text-align: center; }
+.idx-name { font-size: 0.78em; color: var(--muted); margin-bottom: 4px; }
+.idx-price { font-size: 1.15em; font-weight: 700; }
+.idx-change { font-size: 0.82em; margin-top: 2px; }
+.ma-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+.ma-title { font-size: 0.85em; color: var(--muted); margin-bottom: 12px; letter-spacing: 1px; }
+.ma-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.ma-row:last-child { border-bottom: none; }
+.ma-label { font-size: 0.9em; }
+.ma-value { font-weight: 600; font-size: 0.95em; }
+.ma-delta { font-size: 0.82em; }
+.signal-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+.signal-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.signal-row:last-child { border-bottom: none; }
+.signal-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.78em; font-weight: 600; }
+.badge-bull { background: rgba(63,185,80,0.15); color: var(--green); }
+.badge-bear { background: rgba(248,81,73,0.15); color: var(--red); }
+.badge-neutral { background: rgba(139,148,158,0.15); color: var(--muted); }
+.btn-section { margin-bottom: 16px; }
+.btn { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--accent); font-size: 0.95em; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn:hover { background: rgba(88,166,255,0.08); border-color: var(--accent); }
+.btn:active { transform: scale(0.98); }
+.status-bar { display: flex; justify-content: space-between; align-items: center; font-size: 0.75em; color: var(--muted); margin-bottom: 8px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.status-live { background: var(--green); }
+.status-stale { background: var(--yellow); }
+.status-error { background: var(--red); }
+.disclaimer { font-size: 0.72em; color: var(--muted); text-align: center; padding: 16px 0 32px; line-height: 1.6; }
+.loading { text-align:center; padding:40px; color:var(--muted); }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🌡️ 大盘温度计</h1>
+  <div class="subtitle">A股市场情绪量化 | 实时数据</div>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <span><span class="status-dot status-live"></span> <span id="statusText">加载中…</span></span>
+  <span id="updateTime">--</span>
+</div>
+
+<div id="loadingView" class="loading">⏳ 正在加载数据…</div>
+
+<div id="mainView" class="hidden">
+  <div class="thermometer-section">
+    <div class="temp-label">上证指数 · 市场温度</div>
+    <div class="temp-number" id="tempNumber">--</div>
+    <div class="temp-verdict" id="tempVerdict">--</div>
+    <div class="gauge-bar"><div class="gauge-dot" id="gaugeDot" style="left:50%"></div></div>
+    <div class="gauge-labels">
+      <span>🧊 极恐</span><span>😰 恐惧</span><span>😐 中性</span><span>😤 贪婪</span><span>🔥 极贪</span>
+    </div>
+  </div>
+  <div class="indices-grid" id="indicesGrid"></div>
+  <div class="ma-section">
+    <div class="ma-title">📐 上证指数 vs 均线</div>
+    <div id="maData"></div>
+  </div>
+  <div class="signal-section">
+    <div class="ma-title">🚦 综合信号</div>
+    <div id="signalPanel"></div>
+  </div>
+  <div class="btn-section">
+    <button class="btn" onclick="location.reload()">🔄 刷新页面</button>
+  </div>
+</div>
+
+<div id="errorView" class="loading hidden">
+  <p>⚠️ 数据加载失败</p>
+  <p style="font-size:0.85em;margin-top:8px">请运行 build_tools.py 重新生成，或检查网络</p>
+  <button class="btn" style="margin-top:16px" onclick="location.reload()">🔄 重试</button>
+</div>
+
+<p class="disclaimer">
+  ⚠️ 仅供参考，不构成投资建议<br>
+  数据来源：新浪财经 &amp; 东方财富 | 非交易时段显示最后收盘数据<br>
+  温度基于均线偏离 + 近期动量 + 振幅综合计算
+</p>
+
+
+<script>
+window.__EMBEDDED_DATA__ = {"sh": {"name": "上证指数", "open": 3987.0147, "prev_close": 3987.0147, "price": 4031.5129, "high": 4060.271, "low": 4008.177, "volume": 7431310, "amount": 153740152.0}, "sz": {"name": "深证成指", "open": 14851.978, "prev_close": 14851.978, "price": 14963.41, "high": 14963.41, "low": 14963.41, "volume": 792336422, "amount": 167754822.0}, "kc": {"name": "科创50", "open": 1662.436, "prev_close": 1662.436, "price": 1663.2213, "high": 1663.2213, "low": 1663.2213, "volume": 210185, "amount": 17582024.0}, "sh_klines": [{"date": "2026-03-17", "open": 4086.295, "close": 4049.907, "high": 4108.4, "low": 4049.58, "volume": 67877122400, "amount": 0.0}, {"date": "2026-03-18", "open": 4053.305, "close": 4062.984, "high": 4065.373, "low": 4023.03, "volume": 62387310200, "amount": 0.0}, {"date": "2026-03-19", "open": 4028.542, "close": 4006.552, "high": 4042.022, "low": 3994.165, "volume": 66725542200, "amount": 0.0}, {"date": "2026-03-20", "open": 4004.573, "close": 3957.053, "high": 4022.703, "low": 3955.711, "volume": 66679838700, "amount": 0.0}, {"date": "2026-03-23", "open": 3904.951, "close": 3813.283, "high": 3906.622, "low": 3794.684, "volume": 80473885000, "amount": 0.0}, {"date": "2026-03-24", "open": 3849.631, "close": 3881.28, "high": 3881.424, "low": 3807.994, "volume": 68062203900, "amount": 0.0}, {"date": "2026-03-25", "open": 3892.269, "close": 3931.838, "high": 3933.061, "low": 3891.816, "volume": 68834362600, "amount": 0.0}, {"date": "2026-03-26", "open": 3924.962, "close": 3889.084, "high": 3937.104, "low": 3880.573, "volume": 61597398100, "amount": 0.0}, {"date": "2026-03-27", "open": 3852.094, "close": 3913.724, "high": 3924.108, "low": 3852.094, "volume": 56134296300, "amount": 0.0}, {"date": "2026-03-30", "open": 3884.277, "close": 3923.287, "high": 3924.289, "low": 3872.776, "volume": 59558947900, "amount": 0.0}, {"date": "2026-03-31", "open": 3924.067, "close": 3891.861, "high": 3948.811, "low": 3891.861, "volume": 60670498300, "amount": 0.0}, {"date": "2026-04-01", "open": 3939.566, "close": 3948.552, "high": 3955.943, "low": 3929.921, "volume": 56461159800, "amount": 0.0}, {"date": "2026-04-02", "open": 3940.799, "close": 3919.285, "high": 3952.576, "low": 3900.116, "volume": 54421283500, "amount": 0.0}, {"date": "2026-04-03", "open": 3927.592, "close": 3880.097, "high": 3929.529, "low": 3871.3, "volume": 49269908200, "amount": 0.0}, {"date": "2026-04-07", "open": 3884.151, "close": 3890.165, "high": 3902.607, "low": 3875.684, "volume": 47361507600, "amount": 0.0}, {"date": "2026-04-08", "open": 3930.251, "close": 3994.998, "high": 3994.998, "low": 3926.249, "volume": 64413535200, "amount": 0.0}, {"date": "2026-04-09", "open": 3967.63, "close": 3966.171, "high": 3979.127, "low": 3955.246, "volume": 54156980100, "amount": 0.0}, {"date": "2026-04-10", "open": 3985.464, "close": 3986.225, "high": 4011.024, "low": 3979.814, "volume": 54641554100, "amount": 0.0}, {"date": "2026-04-13", "open": 3971.199, "close": 3988.558, "high": 3991.262, "low": 3966.198, "volume": 54578176800, "amount": 0.0}, {"date": "2026-04-14", "open": 4006.727, "close": 4026.626, "high": 4026.626, "low": 3992.407, "volume": 57025900300, "amount": 0.0}, {"date": "2026-04-15", "open": 4039.471, "close": 4027.21, "high": 4050.621, "low": 4020.904, "volume": 56945858900, "amount": 0.0}, {"date": "2026-04-16", "open": 4030.138, "close": 4055.547, "high": 4057.831, "low": 4028.909, "volume": 54587696700, "amount": 0.0}, {"date": "2026-04-17", "open": 4043.381, "close": 4051.425, "high": 4058.604, "low": 4038.429, "volume": 54879140600, "amount": 0.0}, {"date": "2026-04-20", "open": 4053.375, "close": 4082.127, "high": 4083.19, "low": 4051.685, "volume": 58984137900, "amount": 0.0}, {"date": "2026-04-21", "open": 4075.845, "close": 4085.077, "high": 4086.637, "low": 4062.133, "volume": 57668945000, "amount": 0.0}, {"date": "2026-04-22", "open": 4074.813, "close": 4106.258, "high": 4106.844, "low": 4074.68, "volume": 58246634600, "amount": 0.0}, {"date": "2026-04-23", "open": 4110.788, "close": 4093.25, "high": 4114.844, "low": 4070.46, "volume": 67116609200, "amount": 0.0}, {"date": "2026-04-24", "open": 4081.033, "close": 4079.9, "high": 4092.613, "low": 4061.145, "volume": 60503179800, "amount": 0.0}, {"date": "2026-04-27", "open": 4074.811, "close": 4086.344, "high": 4092.831, "low": 4071.08, "volume": 58995086700, "amount": 0.0}, {"date": "2026-04-28", "open": 4076.143, "close": 4078.637, "high": 4090.201, "low": 4062.872, "volume": 60050749800, "amount": 0.0}, {"date": "2026-04-29", "open": 4061.822, "close": 4107.514, "high": 4112.152, "low": 4061.822, "volume": 61422145100, "amount": 0.0}, {"date": "2026-04-30", "open": 4107.297, "close": 4112.159, "high": 4118.755, "low": 4100.966, "volume": 65691272800, "amount": 0.0}, {"date": "2026-05-06", "open": 4135.451, "close": 4160.174, "high": 4166.147, "low": 4129.911, "volume": 70117748000, "amount": 0.0}, {"date": "2026-05-07", "open": 4168.447, "close": 4180.092, "high": 4180.21, "low": 4163.137, "volume": 68557424900, "amount": 0.0}, {"date": "2026-05-08", "open": 4163.854, "close": 4179.952, "high": 4183.063, "low": 4154.246, "volume": 69701909400, "amount": 0.0}, {"date": "2026-05-11", "open": 4201.347, "close": 4225.021, "high": 4229.58, "low": 4186.082, "volume": 76273628700, "amount": 0.0}, {"date": "2026-05-12", "open": 4229.283, "close": 4214.489, "high": 4230.184, "low": 4199.344, "volume": 71898400200, "amount": 0.0}, {"date": "2026-05-13", "open": 4192.315, "close": 4242.572, "high": 4245.068, "low": 4192.315, "volume": 70501873900, "amount": 0.0}, {"date": "2026-05-14", "open": 4256.157, "close": 4177.918, "high": 4258.863, "low": 4177.918, "volume": 76423500400, "amount": 0.0}, {"date": "2026-05-15", "open": 4174.175, "close": 4135.389, "high": 4191.807, "low": 4114.086, "volume": 73316235700, "amount": 0.0}, {"date": "2026-05-18", "open": 4120.14, "close": 4131.528, "high": 4145.661, "low": 4108.604, "volume": 62723313700, "amount": 0.0}, {"date": "2026-05-19", "open": 4122.961, "close": 4169.538, "high": 4170.289, "low": 4107.994, "volume": 61761106700, "amount": 0.0}, {"date": "2026-05-20", "open": 4152.698, "close": 4162.185, "high": 4169.847, "low": 4139.974, "volume": 62415203500, "amount": 0.0}, {"date": "2026-05-21", "open": 4174.377, "close": 4077.277, "high": 4199.527, "low": 4074.217, "volume": 72721870100, "amount": 0.0}, {"date": "2026-05-22", "open": 4096.172, "close": 4112.9, "high": 4120.088, "low": 4067.747, "volume": 58945964400, "amount": 0.0}, {"date": "2026-05-25", "open": 4126.338, "close": 4152.569, "high": 4153.879, "low": 4119.8, "volume": 61593086100, "amount": 0.0}, {"date": "2026-05-26", "open": 4137.32, "close": 4145.373, "high": 4150.289, "low": 4104.459, "volume": 65477775600, "amount": 0.0}, {"date": "2026-05-27", "open": 4138.805, "close": 4093.727, "high": 4153.561, "low": 4077.616, "volume": 66046739900, "amount": 0.0}, {"date": "2026-05-28", "open": 4080.304, "close": 4098.636, "high": 4110.782, "low": 4055.828, "volume": 62117995000, "amount": 0.0}, {"date": "2026-05-29", "open": 4110.521, "close": 4068.569, "high": 4112.955, "low": 4055.886, "volume": 73159771000, "amount": 0.0}, {"date": "2026-06-01", "open": 4067.158, "close": 4057.74, "high": 4093.041, "low": 4045.69, "volume": 67602580600, "amount": 0.0}, {"date": "2026-06-02", "open": 4061.463, "close": 4075.102, "high": 4089.575, "low": 4032.583, "volume": 64224465600, "amount": 0.0}, {"date": "2026-06-03", "open": 4068.341, "close": 4083.974, "high": 4107.046, "low": 4059.907, "volume": 66845258300, "amount": 0.0}, {"date": "2026-06-04", "open": 4053.67, "close": 4057.781, "high": 4080.718, "low": 4043.433, "volume": 62119477400, "amount": 0.0}, {"date": "2026-06-05", "open": 4044.829, "close": 4027.736, "high": 4078.932, "low": 4015.063, "volume": 66291857700, "amount": 0.0}, {"date": "2026-06-08", "open": 3938.709, "close": 3959.338, "high": 4007.493, "low": 3927.853, "volume": 65929355500, "amount": 0.0}, {"date": "2026-06-09", "open": 3977.539, "close": 4010.031, "high": 4010.872, "low": 3955.908, "volume": 57657009000, "amount": 0.0}, {"date": "2026-06-10", "open": 3985.124, "close": 3993.226, "high": 4006.313, "low": 3963.442, "volume": 59869473900, "amount": 0.0}, {"date": "2026-06-11", "open": 3979.706, "close": 3987.015, "high": 3997.478, "low": 3958.437, "volume": 56854524400, "amount": 0.0}, {"date": "2026-06-12", "open": 4017.865, "close": 4031.513, "high": 4060.271, "low": 4008.177, "volume": 74313109200, "amount": 0.0}], "ma20": 4074.79, "ma60": 4048.31, "momentum5d": 0.09, "temperature": 48, "updated_at": "2026-06-14 21:42:52"};
+
+(function() {
+  if (!window.__EMBEDDED_DATA__) return;
+  const D = window.__EMBEDDED_DATA__;
+  
+  function norm(d) {
+    if (!d) return null;
+    return {
+      name: d.name, price: d.price,
+      prevClose: d.prev_close || d.prevClose || 0,
+      open: d.open, high: d.high, low: d.low,
+      volume: d.volume, amount: d.amount
+    };
+  }
+  
+  function calcVerdict(temp) {
+    if (temp <= 20) return {text:'极度恐惧 😱',cls:'green'};
+    if (temp <= 40) return {text:'恐惧 😰',cls:'green'};
+    if (temp <= 60) return {text:'中性 😐',cls:'yellow'};
+    if (temp <= 80) return {text:'贪婪 😤',cls:'orange'};
+    return {text:'极度贪婪 🔥',cls:'red'};
+  }
+
+  function calcMA(klines, period) {
+    if (!klines || klines.length < period) return null;
+    var closes = klines.slice(-period).map(function(k) { return k.close; });
+    return closes.reduce(function(a,b) { return a+b; }, 0) / period;
+  }
+
+  function renderIndices(sh, sz, kc) {
+    var indices = [{d:sh,id:'sh'},{d:sz,id:'sz'},{d:kc,id:'kc'}];
+    var html = '';
+    for (var i = 0; i < indices.length; i++) {
+      var d = indices[i].d;
+      if (!d) continue;
+      var change = d.price - d.prevClose;
+      var pct = d.prevClose ? (change / d.prevClose * 100) : 0;
+      var sign = change >= 0 ? '+' : '';
+      var cls = change >= 0 ? 'green' : 'red';
+      html += '<div class="idx-card"><div class="idx-name">'+d.name+'</div>';
+      html += '<div class="idx-price">'+d.price.toFixed(2)+'</div>';
+      html += '<div class="idx-change '+cls+'">'+sign+change.toFixed(2)+' ('+sign+pct.toFixed(2)+'%)</div></div>';
+    }
+    document.getElementById('indicesGrid').innerHTML = html;
+  }
+
+  function renderMA(price, ma20, ma60) {
+    var rows = [];
+    if (ma20) {
+      var dev20 = ((price-ma20)/ma20*100);
+      rows.push({label:'MA20',value:ma20.toFixed(2),delta:'偏离 '+(dev20>=0?'+':'')+dev20.toFixed(2)+'%',cls:dev20>=0?'red':'green'});
+    }
+    if (ma60) {
+      var dev60 = ((price-ma60)/ma60*100);
+      rows.push({label:'MA60',value:ma60.toFixed(2),delta:'偏离 '+(dev60>=0?'+':'')+dev60.toFixed(2)+'%',cls:dev60>=0?'red':'green'});
+    }
+    var ma20side = ma20 && price > ma20 ? '上方' : '下方';
+    var ma60side = ma60 && price > ma60 ? '上方' : '下方';
+    rows.push({label:'最新价',value:price.toFixed(2),delta:'MA20'+ma20side+' · MA60'+ma60side,cls:'neutral'});
+    var html = '';
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      html += '<div class="ma-row"><span class="ma-label">'+r.label+'</span><span class="ma-value">'+r.value+'</span>';
+      html += '<span class="ma-delta" style="color:var(--'+(r.cls==='neutral'?'muted':r.cls)+')">'+r.delta+'</span></div>';
+    }
+    document.getElementById('maData').innerHTML = html;
+  }
+
+  function renderSignals(price, ma20, ma60, temp, sh) {
+    var signals = [];
+    if (ma20 && ma60) {
+      if (price > ma20 && ma20 > ma60) signals.push({label:'均线排列',value:'多头排列 📈',cls:'bull'});
+      else if (price < ma20 && ma20 < ma60) signals.push({label:'均线排列',value:'空头排列 📉',cls:'bear'});
+      else signals.push({label:'均线排列',value:'均线纠缠 ⚠️',cls:'neutral'});
+    }
+    if (temp <= 20) signals.push({label:'温度信号',value:'极度恐惧 → 历史大底区域',cls:'bull'});
+    else if (temp <= 40) signals.push({label:'温度信号',value:'恐惧 → 可分批建仓',cls:'bull'});
+    else if (temp <= 60) signals.push({label:'温度信号',value:'中性 → 观望或持有',cls:'neutral'});
+    else if (temp <= 80) signals.push({label:'温度信号',value:'贪婪 → 注意风险',cls:'bear'});
+    else signals.push({label:'温度信号',value:'极度贪婪 → 减仓信号',cls:'bear'});
+    var dayChg = sh.prevClose ? ((sh.price-sh.prevClose)/sh.prevClose*100) : 0;
+    if (dayChg > 2) signals.push({label:'日内强度',value:'强势 +'+dayChg.toFixed(2)+'%',cls:'bull'});
+    else if (dayChg < -2) signals.push({label:'日内强度',value:'弱势 '+dayChg.toFixed(2)+'%',cls:'bear'});
+    else signals.push({label:'日内强度',value:'震荡 '+(dayChg>=0?'+':'')+dayChg.toFixed(2)+'%',cls:'neutral'});
+    var html = '';
+    for (var i = 0; i < signals.length; i++) {
+      var s = signals[i];
+      html += '<div class="signal-row"><span>'+s.label+'</span><span class="signal-badge badge-'+s.cls+'">'+s.value+'</span></div>';
+    }
+    document.getElementById('signalPanel').innerHTML = html;
+  }
+
+  var temp = D.temperature;
+  var v = calcVerdict(temp);
+  document.getElementById('tempNumber').textContent = temp;
+  document.getElementById('tempNumber').style.color = 'var(--' + v.cls + ')';
+  document.getElementById('tempVerdict').textContent = v.text;
+  document.getElementById('tempVerdict').style.color = 'var(--' + v.cls + ')';
+  document.getElementById('gaugeDot').style.left = temp + '%';
+  document.getElementById('updateTime').textContent = D.updated_at || '--';
+  document.getElementById('statusText').textContent = '数据就绪';
+
+  renderIndices(norm(D.sh), norm(D.sz), norm(D.kc));
+  renderMA(D.sh.price, D.ma20, D.ma60);
+  renderSignals(D.sh.price, D.ma20, D.ma60, temp, norm(D.sh));
+
+  document.getElementById('loadingView').classList.add('hidden');
+  document.getElementById('mainView').classList.remove('hidden');
+})();
+</script>
+
+
+<!-- ═══ 付费模块 · 统一模板 ═══ -->
+<style>
+.pay-section {
+  background: var(--card); border: 1px solid rgba(163,113,247,0.3); border-radius: 14px;
+  padding: 20px; text-align: center; margin-bottom: 16px;
+}
+.pay-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; color: var(--text); }
+.pay-desc { font-size: 0.8em; color: var(--muted); margin-bottom: 14px; }
+.pay-price { font-size: 2em; font-weight: 800; color: var(--accent); }
+.pay-qr {
+  width: 160px; height: 160px; border: 1px solid var(--border); border-radius: 10px;
+  margin: 10px auto; display: flex; align-items: center; justify-content: center;
+  background: #fff; color: #333; font-size: 0.8em;
+}
+.pay-note { font-size: 0.72em; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+</style>
+
+<div class="pay-section" id="paySection">
+  <div class="pay-title">💰 解锁完整功能</div>
+  <div class="pay-desc">觉得有用？扫码支持，解锁所有高级功能</div>
+  <div class="pay-price">¥3.9</div>
+  <div class="pay-qr" id="payQR">
+    <!-- 请替换为您的微信/支付宝收款码 -->
+    <span style="text-align:center;padding:10px;line-height:1.4">
+      📱<br>微信/支付宝<br>扫码支付<br>
+      <span style="font-size:0.7em;color:#999">替换为<br>您的收款码</span>
+    </span>
+  </div>
+  <div class="pay-note">
+    付款后截图发送给客服，获取解锁码<br>
+    或直接扫码 → 工具自动解锁 ✨
+  </div>
+</div>
+
+</body>
+</html>

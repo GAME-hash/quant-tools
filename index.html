@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>量化工具箱 · QuantTools</title>
+<style>
+:root {
+  --bg: #0d1117; --card: #161b22; --border: #21262d; --text: #c9d1d9;
+  --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --red: #f85149;
+  --yellow: #d2991d; --orange: #f0883e; --purple: #a371f7;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  min-height: 100vh; padding: 16px; max-width: 600px; margin: 0 auto;
+}
+.header {
+  text-align: center; padding: 32px 0 20px;
+}
+.header h1 {
+  font-size: 1.8em; font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.header p { color: var(--muted); font-size: 0.9em; margin-top: 6px; }
+.tool-grid { display: grid; gap: 12px; margin-bottom: 20px; }
+.tool-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 18px 16px; text-decoration: none; color: var(--text);
+  transition: all 0.2s; display: block;
+}
+.tool-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.tool-card:active { transform: scale(0.98); }
+.tool-icon { font-size: 1.6em; margin-bottom: 6px; }
+.tool-name { font-weight: 700; font-size: 1.05em; margin-bottom: 4px; }
+.tool-desc { font-size: 0.82em; color: var(--muted); line-height: 1.4; }
+.tool-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 0.72em; font-weight: 600; margin-top: 8px;
+}
+.badge-free { background: rgba(63,185,80,0.12); color: var(--green); }
+.badge-pro { background: rgba(88,166,255,0.12); color: var(--accent); }
+.section-title {
+  font-size: 0.78em; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 2px; margin-bottom: 12px;
+}
+.footer { text-align: center; padding: 24px 0; color: var(--muted); font-size: 0.75em; line-height: 1.8; }
+.footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 量化工具箱</h1>
+  <p>A股投资者的 AI 辅助决策工具集</p>
+</div>
+
+<div class="section-title">🛠️ 工具列表</div>
+<div class="tool-grid">
+
+  <a class="tool-card" href="thermometer.html">
+    <div class="tool-icon">🌡️</div>
+    <div class="tool-name">大盘温度计</div>
+    <div class="tool-desc">上证指数市场情绪量化 —— 一个数字看懂今天是冷是热</div>
+    <span class="tool-badge badge-free">免费</span>
+  </a>
+
+  <a class="tool-card" href="checkup.html">
+    <div class="tool-icon">🩺</div>
+    <div class="tool-name">持仓体检单</div>
+    <div class="tool-desc">输入持仓 → 诊断集中度、行业分布、健康评分</div>
+    <span class="tool-badge badge-pro">¥3.9</span>
+  </a>
+
+  <a class="tool-card" href="cost-calculator.html">
+    <div class="tool-icon">💰</div>
+    <div class="tool-name">成本精算器</div>
+    <div class="tool-desc">佣金+印花税+过户费全算，盈亏平衡点一目了然</div>
+    <span class="tool-badge badge-pro">¥3.9</span>
+  </a>
+
+  <a class="tool-card" href="stoploss-calculator.html">
+    <div class="tool-icon">🛑</div>
+    <div class="tool-name">止损线计算器</div>
+    <div class="tool-desc">保守/中性/激进三方案对比，科学止损不靠感觉</div>
+    <span class="tool-badge badge-pro">¥3.9</span>
+  </a>
+
+  <a class="tool-card" href="pepb-percentile.html">
+    <div class="tool-icon">📊</div>
+    <div class="tool-name">PE/PB 分位器</div>
+    <div class="tool-desc">估值在历史上的位置 —— 低估还是高估？数据说话</div>
+    <span class="tool-badge badge-pro">¥3.9</span>
+  </a>
+
+</div>
+
+<div class="section-title">🚀 即将上线</div>
+<div class="tool-grid">
+
+  <div class="tool-card" style="opacity:0.5">
+    <div class="tool-icon">🔍</div>
+    <div class="tool-name">共振信号扫描器</div>
+    <div class="tool-desc">输入代码 → 多指标共振评分 0-100</div>
+    <span class="tool-badge" style="background:rgba(139,148,158,0.12);color:#8b949e">开发中</span>
+  </div>
+
+  <div class="tool-card" style="opacity:0.5">
+    <div class="tool-icon">🔥</div>
+    <div class="tool-name">板块轮动热力图</div>
+    <div class="tool-desc">钱在往哪流？一眼看穿板块资金轮动</div>
+    <span class="tool-badge" style="background:rgba(139,148,158,0.12);color:#8b949e">开发中</span>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>由 <a href="https://github.com/NousResearch/hermes-agent" target="_blank">Hermes Agent</a> 驱动</p>
+  <p>AI 量化工具工厂 · 零服务器 · 隐私优先</p>
+  <p style="margin-top:8px">⚠️ 所有工具仅供参考，不构成投资建议</p>
+</div>
+
+</body>
+</html>
