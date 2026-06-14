@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>趋势强度计 | 量化工具箱</title>
+<style>
+:root {
+  --bg: #0d1117; --card: #161b22; --border: #21262d; --text: #c9d1d9;
+  --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --red: #f85149;
+  --yellow: #d2991d; --orange: #f0883e; --blue: #58a6ff; --purple: #a371f7;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  min-height: 100vh; padding: 16px; max-width: 600px; margin: 0 auto;
+}
+.header { text-align: center; padding: 20px 0 8px; }
+.header h1 { font-size: 1.4em; font-weight: 700; background: linear-gradient(135deg, var(--accent), #a371f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.header .subtitle { font-size: 0.78em; color: var(--muted); margin-top: 4px; }
+.status-bar { display: flex; justify-content: space-between; align-items: center; font-size: 0.75em; color: var(--muted); margin-bottom: 8px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.status-live { background: var(--green); }
+.status-stale { background: var(--yellow); }
+.status-error { background: var(--red); }
+
+/* ── 趋势仪表盘 ── */
+.gauge-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 14px; margin-bottom: 14px; }
+.gauge-title { font-size: 0.82em; color: var(--muted); margin-bottom: 12px; letter-spacing: 1px; text-align: center; }
+.gauge-track { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #30363d, #21262d 20%, #21262d 25%, #21262d 50%, #21262d 75%, #30363d); margin: 0 10px 6px; }
+.gauge-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--blue), var(--green), var(--yellow), var(--orange), var(--red)); transition: width 0.8s ease; }
+.gauge-dot-wrap { position: relative; height: 24px; margin: 0 10px; }
+.gauge-dot { position: absolute; top: -12px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); transform: translateX(-50%); transition: left 0.8s ease; z-index: 2; }
+.gauge-labels { display: flex; justify-content: space-between; font-size: 0.62em; color: var(--muted); padding: 0 10px; margin-top: 2px; }
+
+/* ── 三大指数卡片 ── */
+.indices-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.idx-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 10px; text-align: center; transition: border-color 0.3s; }
+.idx-card:hover { border-color: var(--accent); }
+.idx-name { font-size: 0.78em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+.idx-adx-wrap { margin-bottom: 6px; }
+.idx-adx { font-size: 2em; font-weight: 800; line-height: 1; }
+.idx-trend-label { display: inline-block; font-size: 0.7em; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-top: 4px; }
+.idx-di-row { display: flex; justify-content: center; gap: 6px; font-size: 0.68em; margin-top: 6px; }
+.idx-di-plus { color: var(--green); }
+.idx-di-minus { color: var(--red); }
+.idx-direction { font-size: 0.72em; font-weight: 600; margin-top: 4px; }
+.idx-macd { font-size: 0.65em; color: var(--muted); margin-top: 4px; }
+.idx-rsi { font-size: 0.65em; color: var(--muted); margin-top: 2px; }
+
+/* ── 综合评分条 ── */
+.score-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 14px; margin-bottom: 14px; }
+.score-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.score-title { font-size: 0.82em; color: var(--muted); letter-spacing: 1px; }
+.score-num { font-size: 1.6em; font-weight: 800; }
+.score-bar-wrap { height: 12px; border-radius: 6px; background: var(--border); overflow: hidden; margin-bottom: 6px; }
+.score-bar-fill { height: 100%; border-radius: 6px; transition: width 0.8s ease; }
+.score-breakdown { display: flex; justify-content: space-around; font-size: 0.65em; color: var(--muted); margin-top: 8px; }
+.score-breakdown span { text-align: center; }
+
+/* ── 详情面板 ── */
+.detail-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 14px; margin-bottom: 14px; }
+.detail-title { font-size: 0.82em; color: var(--muted); margin-bottom: 10px; letter-spacing: 1px; }
+.detail-table { width: 100%; font-size: 0.75em; border-collapse: collapse; }
+.detail-table th { color: var(--muted); font-weight: 500; text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+.detail-table td { padding: 6px 4px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.detail-table tr:last-child td { border-bottom: none; }
+.detail-table .idx-label { color: var(--muted); }
+
+/* 颜色工具类 */
+.color-green { color: var(--green); }
+.color-red { color: var(--red); }
+.color-yellow { color: var(--yellow); }
+.color-orange { color: var(--orange); }
+.color-blue { color: var(--blue); }
+
+/* 趋势标签 */
+.trend-none { background: rgba(88,166,255,0.15); color: var(--blue); }
+.trend-weak { background: rgba(63,185,80,0.12); color: var(--green); }
+.trend-moderate { background: rgba(210,153,29,0.15); color: var(--yellow); }
+.trend-strong { background: rgba(240,136,62,0.15); color: var(--orange); }
+.trend-extreme { background: rgba(248,81,73,0.15); color: var(--red); }
+
+.btn-section { margin-bottom: 16px; }
+.btn { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--accent); font-size: 0.95em; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn:hover { background: rgba(88,166,255,0.08); border-color: var(--accent); }
+.btn:active { transform: scale(0.98); }
+
+.disclaimer { font-size: 0.72em; color: var(--muted); text-align: center; padding: 16px 0 32px; line-height: 1.6; }
+.loading { text-align:center; padding:40px; color:var(--muted); }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 趋势强度计</h1>
+  <div class="subtitle">ADX + MACD + RSI · 三重验证趋势评估</div>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <span><span class="status-dot status-live"></span> <span id="statusText">加载中…</span></span>
+  <span id="updateTime">--</span>
+</div>
+
+<div id="loadingView" class="loading">⏳ 正在计算趋势强度…</div>
+
+<div id="mainView" class="hidden">
+
+  <!-- 综合趋势仪表盘 -->
+  <div class="gauge-section">
+    <div class="gauge-title">🎯 综合趋势强度</div>
+    <div class="gauge-track">
+      <div class="gauge-fill" id="gaugeFill" style="width:0%"></div>
+    </div>
+    <div class="gauge-dot-wrap">
+      <div class="gauge-dot" id="gaugeDot" style="left:0%"></div>
+    </div>
+    <div class="gauge-labels">
+      <span>无趋势</span><span>弱</span><span>中等</span><span>强</span><span>极强</span>
+    </div>
+    <div style="text-align:center; margin-top:8px;">
+      <span style="font-size:1.8em; font-weight:800;" id="gaugeVal">--</span>
+      <span style="font-size:0.75em; color:var(--muted);">/ 100</span>
+    </div>
+  </div>
+
+  <!-- 三大指数卡片 -->
+  <div class="indices-grid" id="indicesGrid"></div>
+
+  <!-- 综合评分条 -->
+  <div class="score-section">
+    <div class="score-header">
+      <span class="score-title">📈 综合趋势评分</span>
+      <span class="score-num" id="compositeScore">--</span>
+    </div>
+    <div class="score-bar-wrap">
+      <div class="score-bar-fill" id="compositeBar" style="width:0%"></div>
+    </div>
+    <div class="score-breakdown">
+      <span>📐 ADX强度 <b id="breakADX">0</b>/40</span>
+      <span>📊 MACD方向 <b id="breakMACD">0</b>/30</span>
+      <span>📉 RSI位置 <b id="breakRSI">0</b>/30</span>
+    </div>
+  </div>
+
+  <!-- 详情面板 -->
+  <div class="detail-section">
+    <div class="detail-title">🔍 详细数据</div>
+    <table class="detail-table" id="detailTable">
+      <thead>
+        <tr><th>指标</th><th>上证</th><th>深证</th><th>科创50</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="idx-label">ADX(14)</td><td id="dShADX">--</td><td id="dSzADX">--</td><td id="dKcADX">--</td></tr>
+        <tr><td class="idx-label">+DI</td><td id="dShPDI">--</td><td id="dSzPDI">--</td><td id="dKcPDI">--</td></tr>
+        <tr><td class="idx-label">-DI</td><td id="dShMDI">--</td><td id="dSzMDI">--</td><td id="dKcMDI">--</td></tr>
+        <tr><td class="idx-label">DX</td><td id="dShDX">--</td><td id="dSzDX">--</td><td id="dKcDX">--</td></tr>
+        <tr><td class="idx-label">MACD DIF</td><td id="dShDIF">--</td><td id="dSzDIF">--</td><td id="dKcDIF">--</td></tr>
+        <tr><td class="idx-label">MACD DEA</td><td id="dShDEA">--</td><td id="dSzDEA">--</td><td id="dKcDEA">--</td></tr>
+        <tr><td class="idx-label">MACD 柱</td><td id="dShMACD">--</td><td id="dSzMACD">--</td><td id="dKcMACD">--</td></tr>
+        <tr><td class="idx-label">RSI(14)</td><td id="dShRSI">--</td><td id="dSzRSI">--</td><td id="dKcRSI">--</td></tr>
+        <tr><td class="idx-label">趋势评分</td><td id="dShScore">--</td><td id="dSzScore">--</td><td id="dKcScore">--</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="btn-section">
+    <button class="btn" onclick="location.reload()">🔄 刷新数据</button>
+  </div>
+</div>
+
+<div id="errorView" class="loading hidden">
+  <p>⚠️ 数据加载失败</p>
+  <p style="font-size:0.85em;margin-top:8px">请运行 build_trend.py 重新生成，或检查网络</p>
+  <button class="btn" style="margin-top:16px" onclick="location.reload()">🔄 重试</button>
+</div>
+
+<p class="disclaimer">
+  ⚠️ 仅供参考，不构成投资建议<br>
+  数据来源：东方财富 &amp; akshare | ADX+MACD+RSI 三重验证<br>
+  趋势评分 = ADX标准化(0-40) + MACD方向(0-30) + RSI位置(0-30)
+</p>
+
+
+<script>
+window.__DATA__ = {"indices": [{"id": "sh", "name": "上证指数", "symbol": "sh000001", "price": 4031.51, "change_pct": 1.12, "adx": 26.18, "pdi": 17.42, "mdi": 24.97, "dx": 17.82, "trend_label": "中等趋势", "macd_dif": -28.2783, "macd_dea": -17.3084, "macd_hist": -21.9398, "rsi": 45.44, "trend_score": 22, "score_adx": 10, "score_macd": 0, "score_rsi": 12}, {"id": "sz", "name": "深证成指", "symbol": "sz399001", "price": 14963.41, "change_pct": 0.75, "adx": 25.25, "pdi": 18.88, "mdi": 22.19, "dx": 8.06, "trend_label": "中等趋势", "macd_dif": -60.5324, "macd_dea": 59.6874, "macd_hist": -240.4397, "rsi": 44.15, "trend_score": 22, "score_adx": 10, "score_macd": 0, "score_rsi": 12}, {"id": "kc", "name": "科创50", "symbol": "sh000688", "price": 1663.22, "change_pct": 0.05, "adx": 34.2, "pdi": 31.07, "mdi": 18.97, "dx": 24.18, "trend_label": "中等趋势", "macd_dif": 8.5963, "macd_dea": 32.1856, "macd_hist": -47.1785, "rsi": 48.75, "trend_score": 26, "score_adx": 14, "score_macd": 0, "score_rsi": 12}], "composite_trend": 23, "score_adx": 11, "score_macd": 0, "score_rsi": 12, "updated_at": "2026-06-14 23:23:10"};
+</script>
+
+
+<script>
+(function() {
+  if (!window.__DATA__) { document.getElementById('errorView').classList.remove('hidden'); return; }
+  const D = window.__DATA__;
+
+  document.getElementById('updateTime').textContent = D.updated_at || '--';
+  document.getElementById('statusText').textContent = '数据就绪';
+
+  // ── 趋势强度判定 ──
+  function getTrendInfo(adx) {
+    if (adx < 20) return { label: '无趋势', cls: 'trend-none', gaugeVal: Math.max(5, adx) };
+    if (adx < 25) return { label: '弱趋势', cls: 'trend-weak', gaugeVal: 22 };
+    if (adx < 50) return { label: '中等趋势', cls: 'trend-moderate', gaugeVal: 40 };
+    if (adx < 75) return { label: '强趋势', cls: 'trend-strong', gaugeVal: 65 };
+    return { label: '极强趋势', cls: 'trend-extreme', gaugeVal: 90 };
+  }
+
+  function getDirection(pdi, mdi) {
+    if (pdi > mdi) return { text: '多头占优 ▲', cls: 'color-green' };
+    if (mdi > pdi) return { text: '空头占优 ▼', cls: 'color-red' };
+    return { text: '方向均衡 ═', cls: 'color-yellow' };
+  }
+
+  // ── 渲染三大指数卡片 ──
+  const indices = D.indices || [];
+  let gridHTML = '';
+  indices.forEach(function(idx) {
+    const trend = getTrendInfo(idx.adx);
+    const dir = getDirection(idx.pdi, idx.mdi);
+    const macdCls = idx.macd_hist >= 0 ? 'color-green' : 'color-red';
+    const macdSign = idx.macd_hist >= 0 ? '+' : '';
+
+    gridHTML += '<div class="idx-card">';
+    gridHTML += '<div class="idx-name">' + idx.name + '</div>';
+    gridHTML += '<div class="idx-adx-wrap"><div class="idx-adx" style="color:var(--' +
+      (idx.adx >= 75 ? 'red' : idx.adx >= 50 ? 'orange' : idx.adx >= 25 ? 'yellow' : idx.adx >= 20 ? 'green' : 'blue') +
+      ')">' + idx.adx.toFixed(1) + '</div>';
+    gridHTML += '<span class="idx-trend-label ' + trend.cls + '">' + trend.label + '</span></div>';
+    gridHTML += '<div class="idx-di-row">';
+    gridHTML += '<span class="idx-di-plus">+DI ' + idx.pdi.toFixed(1) + '</span>';
+    gridHTML += '<span class="idx-di-minus">-DI ' + idx.mdi.toFixed(1) + '</span>';
+    gridHTML += '</div>';
+    gridHTML += '<div class="idx-direction ' + dir.cls + '">' + dir.text + '</div>';
+    gridHTML += '<div class="idx-macd ' + macdCls + '">MACD ' + macdSign + idx.macd_hist.toFixed(3) + '</div>';
+    gridHTML += '<div class="idx-rsi">RSI ' + idx.rsi.toFixed(1) + '</div>';
+    gridHTML += '</div>';
+  });
+  document.getElementById('indicesGrid').innerHTML = gridHTML;
+
+  // ── 综合仪表盘 ──
+  const compScore = D.composite_trend || 0;
+  document.getElementById('gaugeVal').textContent = compScore;
+  document.getElementById('gaugeFill').style.width = compScore + '%';
+  document.getElementById('gaugeDot').style.left = compScore + '%';
+
+  // ── 综合评分条 ──
+  document.getElementById('compositeScore').textContent = compScore;
+  document.getElementById('compositeBar').style.width = compScore + '%';
+  // 颜色渐变: 蓝(弱)→绿→黄→橙→红(强)
+  const barColor = compScore >= 80 ? 'linear-gradient(90deg, var(--green), var(--red))' :
+                   compScore >= 60 ? 'linear-gradient(90deg, var(--green), var(--orange))' :
+                   compScore >= 40 ? 'linear-gradient(90deg, var(--blue), var(--yellow))' :
+                   'linear-gradient(90deg, var(--blue), var(--green))';
+  document.getElementById('compositeBar').style.background = barColor;
+
+  document.getElementById('breakADX').textContent = D.score_adx || 0;
+  document.getElementById('breakMACD').textContent = D.score_macd || 0;
+  document.getElementById('breakRSI').textContent = D.score_rsi || 0;
+
+  // ── 详情表格 ──
+  function fillCell(id, val, fmt) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (fmt === 'f1') el.textContent = val.toFixed(1);
+    else if (fmt === 'f3') el.textContent = val.toFixed(3);
+    else if (fmt === 'i') el.textContent = val;
+    else el.textContent = val;
+  }
+
+  if (indices.length >= 1) {
+    const sh = indices[0];
+    fillCell('dShADX', sh.adx, 'f1'); fillCell('dShPDI', sh.pdi, 'f1'); fillCell('dShMDI', sh.mdi, 'f1');
+    fillCell('dShDX', sh.dx, 'f1'); fillCell('dShDIF', sh.macd_dif, 'f3'); fillCell('dShDEA', sh.macd_dea, 'f3');
+    fillCell('dShMACD', sh.macd_hist, 'f3'); fillCell('dShRSI', sh.rsi, 'f1'); fillCell('dShScore', sh.trend_score, 'i');
+  }
+  if (indices.length >= 2) {
+    const sz = indices[1];
+    fillCell('dSzADX', sz.adx, 'f1'); fillCell('dSzPDI', sz.pdi, 'f1'); fillCell('dSzMDI', sz.mdi, 'f1');
+    fillCell('dSzDX', sz.dx, 'f1'); fillCell('dSzDIF', sz.macd_dif, 'f3'); fillCell('dSzDEA', sz.macd_dea, 'f3');
+    fillCell('dSzMACD', sz.macd_hist, 'f3'); fillCell('dSzRSI', sz.rsi, 'f1'); fillCell('dSzScore', sz.trend_score, 'i');
+  }
+  if (indices.length >= 3) {
+    const kc = indices[2];
+    fillCell('dKcADX', kc.adx, 'f1'); fillCell('dKcPDI', kc.pdi, 'f1'); fillCell('dKcMDI', kc.mdi, 'f1');
+    fillCell('dKcDX', kc.dx, 'f1'); fillCell('dKcDIF', kc.macd_dif, 'f3'); fillCell('dKcDEA', kc.macd_dea, 'f3');
+    fillCell('dKcMACD', kc.macd_hist, 'f3'); fillCell('dKcRSI', kc.rsi, 'f1'); fillCell('dKcScore', kc.trend_score, 'i');
+  }
+
+  document.getElementById('loadingView').classList.add('hidden');
+  document.getElementById('mainView').classList.remove('hidden');
+})();
+</script>
+
+
+<p class="disclaimer" style="margin-top:16px; font-weight:600;">🆓 本工具完全免费 · 由 Hermes Agent 驱动开发</p>
+</body>
+</html>
