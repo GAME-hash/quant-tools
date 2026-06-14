@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>共振热力榜 | 量化工具箱</title>
+<style>
+:root {
+  --bg: #0d1117; --card: #161b22; --border: #21262d; --text: #c9d1d9;
+  --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --red: #f85149;
+  --yellow: #d2991d; --orange: #f0883e;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  min-height: 100vh; padding: 16px; max-width: 600px; margin: 0 auto;
+}
+.header { text-align: center; padding: 20px 0 8px; }
+.header h1 { font-size: 1.4em; font-weight: 700; background: linear-gradient(135deg, var(--accent), #a371f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.header .subtitle { font-size: 0.78em; color: var(--muted); margin-top: 4px; }
+.status-bar { display: flex; justify-content: space-between; align-items: center; font-size: 0.75em; color: var(--muted); margin-bottom: 8px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.status-live { background: var(--green); }
+.status-stale { background: var(--yellow); }
+.status-error { background: var(--red); }
+
+/* ── 三大指数区域 ── */
+.major-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 14px; margin-bottom: 14px; }
+.major-title { font-size: 0.82em; color: var(--muted); margin-bottom: 10px; letter-spacing: 1px; }
+.major-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.major-card { background: rgba(255,255,255,0.03); border-radius: 10px; padding: 12px 8px; text-align: center; }
+.major-name { font-size: 0.75em; color: var(--muted); margin-bottom: 4px; }
+.major-score { font-size: 1.5em; font-weight: 800; line-height: 1.1; }
+.major-emoji { font-size: 1.2em; margin-top: 2px; }
+.major-signal { font-size: 0.68em; color: var(--muted); margin-top: 2px; }
+.major-price { font-size: 0.72em; color: var(--muted); margin-top: 2px; }
+
+/* ── 行业热力榜 ── */
+.heatmap-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 14px; margin-bottom: 14px; }
+.heatmap-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.heatmap-title { font-size: 0.82em; color: var(--muted); letter-spacing: 1px; }
+.heatmap-count { font-size: 0.72em; color: var(--muted); }
+.legend-row { display: flex; justify-content: space-between; font-size: 0.62em; color: var(--muted); padding: 0 4px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.legend-row span { flex: 1; }
+.legend-row span:nth-child(1) { flex: 0 0 32px; text-align: center; }
+.legend-row span:nth-child(2) { text-align: left; }
+.legend-row span:nth-child(3) { text-align: right; }
+.legend-row span:nth-child(4) { text-align: right; flex: 0 0 58px; }
+.legend-row span:nth-child(5) { text-align: right; flex: 0 0 68px; }
+.legend-row span:nth-child(6) { text-align: right; flex: 0 0 72px; }
+
+.hm-row { display: flex; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+.hm-row:last-child { border-bottom: none; }
+.hm-row:hover { background: rgba(255,255,255,0.02); }
+.hm-emoji { flex: 0 0 32px; text-align: center; font-size: 1.1em; }
+.hm-name { flex: 1; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-price { flex: 0 0 72px; text-align: right; font-size: 0.85em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hm-change { flex: 0 0 58px; text-align: right; font-size: 0.8em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hm-score-wrap { flex: 0 0 68px; text-align: right; }
+.hm-score-bar { height: 5px; border-radius: 3px; margin-top: 3px; background: var(--border); overflow: hidden; }
+.hm-score-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.hm-score-num { font-size: 0.85em; font-weight: 700; }
+.hm-signal { flex: 0 0 72px; text-align: right; font-size: 0.72em; font-weight: 600; }
+
+/* 分数颜色 */
+.score-fire { color: #ff6b35; }      /* 80+ */
+.score-bull { color: var(--green); }  /* 60-79 */
+.score-neutral { color: var(--yellow); } /* 40-59 */
+.score-bear { color: var(--orange); } /* 20-39 */
+.score-crash { color: var(--red); }   /* <20 */
+
+.bar-fire { background: linear-gradient(90deg, var(--green), #ff6b35); }
+.bar-bull { background: var(--green); }
+.bar-neutral { background: var(--yellow); }
+.bar-bear { background: var(--orange); }
+.bar-crash { background: var(--red); }
+
+/* ── 概览区 ── */
+.overview-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 14px; }
+.overview-row { display: flex; justify-content: space-around; text-align: center; }
+.overview-item { flex: 1; }
+.overview-num { font-size: 1.6em; font-weight: 800; }
+.overview-label { font-size: 0.68em; color: var(--muted); margin-top: 2px; }
+
+.btn-section { margin-bottom: 16px; }
+.btn { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--accent); font-size: 0.95em; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn:hover { background: rgba(88,166,255,0.08); border-color: var(--accent); }
+.btn:active { transform: scale(0.98); }
+
+.disclaimer { font-size: 0.72em; color: var(--muted); text-align: center; padding: 16px 0 32px; line-height: 1.6; }
+.loading { text-align:center; padding:40px; color:var(--muted); }
+.hidden { display: none !important; }
+
+/* 排名徽章 */
+.rank-badge { display: inline-block; width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 4px; font-size: 0.7em; font-weight: 700; }
+.rank-1 { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
+.rank-2 { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: #000; }
+.rank-3 { background: linear-gradient(135deg, #cd7f32, #b87333); color: #fff; }
+.rank-other { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔥 共振热力榜</h1>
+  <div class="subtitle">主流板块ETF · 行业共振扫描</div>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <span><span class="status-dot status-live"></span> <span id="statusText">加载中…</span></span>
+  <span id="updateTime">--</span>
+</div>
+
+<div id="loadingView" class="loading">⏳ 正在扫描行业共振…</div>
+
+<div id="mainView" class="hidden">
+
+  <!-- 概览 -->
+  <div class="overview-section">
+    <div class="overview-row">
+      <div class="overview-item">
+        <div class="overview-num" style="color:var(--green)" id="ovBull">--</div>
+        <div class="overview-label">😤 偏多以上</div>
+      </div>
+      <div class="overview-item">
+        <div class="overview-num" style="color:var(--yellow)" id="ovNeutral">--</div>
+        <div class="overview-label">😐 中性</div>
+      </div>
+      <div class="overview-item">
+        <div class="overview-num" style="color:var(--red)" id="ovBear">--</div>
+        <div class="overview-label">😰 偏空以下</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 三大指数共振 -->
+  <div class="major-section">
+    <div class="major-title">📊 三大指数共振</div>
+    <div class="major-grid" id="majorGrid"></div>
+  </div>
+
+  <!-- 行业热力榜 -->
+  <div class="heatmap-section">
+    <div class="heatmap-header">
+      <span class="heatmap-title">🏭 行业共振热力榜</span>
+      <span class="heatmap-count">按共振评分降序</span>
+    </div>
+    <div class="legend-row">
+      <span>#</span><span>行业</span><span>最新价</span><span>涨跌幅</span><span>共振评分</span><span>信号</span>
+    </div>
+    <div id="heatmapList"></div>
+  </div>
+
+  <div class="btn-section">
+    <button class="btn" onclick="location.reload()">🔄 刷新扫描</button>
+  </div>
+</div>
+
+<div id="errorView" class="loading hidden">
+  <p>⚠️ 数据加载失败</p>
+  <p style="font-size:0.85em;margin-top:8px">请运行 build_resonance.py 重新生成，或检查网络</p>
+  <button class="btn" style="margin-top:16px" onclick="location.reload()">🔄 重试</button>
+</div>
+
+<p class="disclaimer">
+  ⚠️ 仅供参考，不构成投资建议<br>
+  数据来源：东方财富 &amp; akshare | 非交易时段显示最后收盘数据<br>
+  共振评分综合MA方向/MACD/成交量/动量四大维度
+</p>
+
+<script>window.__DATA__ = {"items": [{"name": "银行", "code": "sh512800", "price": 0.814, "score": 100, "change_pct": 1.496259351620935, "verdict": "🔥 强烈看多", "type": "etf"}, {"name": "证券", "code": "sh512880", "price": 1.045, "score": 79, "change_pct": 3.670634920634913, "verdict": "😤 偏多", "type": "etf"}, {"name": "医药", "code": "sh512010", "price": 0.332, "score": 54, "change_pct": 2.153846153846156, "verdict": "😐 中性", "type": "etf"}, {"name": "上证50", "code": "sh510050", "price": 2.982, "score": 54, "change_pct": 1.8442622950819765, "verdict": "😐 中性", "type": "etf"}, {"name": "上证指数", "code": "sh000001", "price": 4031.5129, "score": 50, "change_pct": 1.12, "verdict": "😐 中性", "type": "index"}, {"name": "半导体", "code": "sh512480", "price": 2.106, "score": 42, "change_pct": -1.1267605633802829, "verdict": "😐 中性", "type": "etf"}, {"name": "科创50", "code": "sh000688", "price": 1663.2213, "score": 38, "change_pct": 0.05, "verdict": "😰 偏空", "type": "index"}, {"name": "沪深300", "code": "sh510300", "price": 4.818, "score": 38, "change_pct": 1.4102294253841143, "verdict": "😰 偏空", "type": "etf"}, {"name": "科创50", "code": "sh588000", "price": 1.756, "score": 38, "change_pct": 0.0, "verdict": "😰 偏空", "type": "etf"}, {"name": "房地产", "code": "sh512200", "price": 1.277, "score": 34, "change_pct": 1.3492063492063417, "verdict": "😰 偏空", "type": "etf"}, {"name": "军工", "code": "sh512660", "price": 1.246, "score": 32, "change_pct": 2.2149302707136926, "verdict": "😰 偏空", "type": "etf"}, {"name": "消费", "code": "sz159928", "price": 0.657, "score": 29, "change_pct": 1.076923076923078, "verdict": "😰 偏空", "type": "etf"}, {"name": "新能源", "code": "sh516160", "price": 2.908, "score": 26, "change_pct": 1.7138859741168218, "verdict": "😰 偏空", "type": "etf"}, {"name": "白酒", "code": "sh512690", "price": 0.428, "score": 26, "change_pct": 0.9433962264150951, "verdict": "😰 偏空", "type": "etf"}, {"name": "深证成指", "code": "sz399001", "price": 14963.41, "score": 22, "change_pct": 0.75, "verdict": "😰 偏空", "type": "index"}, {"name": "AI智能", "code": "sh515050", "price": 1.182, "score": 20, "change_pct": -0.5050505050505055, "verdict": "😰 偏空", "type": "etf"}, {"name": "创业板", "code": "sz159949", "price": 1.855, "score": 20, "change_pct": 0.3787878787878731, "verdict": "😰 偏空", "type": "etf"}, {"name": "中证500", "code": "sh510500", "price": 8.242, "score": 16, "change_pct": 1.340218861428769, "verdict": "😱 强烈看空", "type": "etf"}], "updated_at": "2026-06-14 23:13:29"};</script>
+
+<script>
+(function() {
+  if (!window.__DATA__) { document.getElementById('errorView').classList.remove('hidden'); return; }
+  const D = window.__DATA__;
+  
+  document.getElementById('updateTime').textContent = D.updated_at || '--';
+  document.getElementById('statusText').textContent = '数据就绪';
+  
+  // 概览统计
+  let bull = 0, neutral = 0, bear = 0;
+  D.items.forEach(r => { if (r.score >= 60) bull++; else if (r.score >= 40) neutral++; else bear++; });
+  document.getElementById('ovBull').textContent = bull;
+  document.getElementById('ovNeutral').textContent = neutral;
+  document.getElementById('ovBear').textContent = bear;
+  
+  // 三大指数
+  const indices = D.items.filter(r => r.type === 'index');
+  let idxHTML = '';
+  indices.forEach(r => {
+    const sign = r.change_pct >= 0 ? '+' : '';
+    const cls = r.change_pct >= 0 ? 'green' : 'red';
+    const vcls = r.score >= 60 ? 'green' : r.score >= 40 ? 'yellow' : 'red';
+    idxHTML += '<div class="major-card"><div class="major-name">'+r.name+'</div>';
+    idxHTML += '<div class="major-price">'+r.price.toFixed(2)+' <span class="'+cls+'" style="font-size:0.78em">'+sign+r.change_pct.toFixed(2)+'%</span></div>';
+    idxHTML += '<div class="major-resonance" style="color:var(--'+vcls+')">共振 '+r.score+' '+r.verdict+'</div></div>';
+  });
+  document.getElementById('majorGrid').innerHTML = idxHTML || '<p style="color:var(--muted)">暂无数据</p>';
+  
+  // 行业热力榜
+  const etfs = D.items.filter(r => r.type === 'etf');
+  let listHTML = '';
+  etfs.forEach((r, i) => {
+    const rank = i < 3 ? 'rank-'+(i+1) : 'rank-other';
+    const emoji = r.score >= 80 ? '🔥' : r.score >= 60 ? '😤' : r.score >= 40 ? '😐' : r.score >= 20 ? '😰' : '😱';
+    const sign = r.change_pct >= 0 ? '+' : '';
+    const cls = r.change_pct >= 0 ? 'green' : 'red';
+    const barW = r.score;
+    listHTML += '<div class="heatmap-row">';
+    listHTML += '<span class="rank '+rank+'">'+(i+1)+'</span>';
+    listHTML += '<span class="industry-name">'+emoji+' '+r.name+'</span>';
+    listHTML += '<span class="price">'+r.price.toFixed(2)+'</span>';
+    listHTML += '<span class="change '+cls+'">'+sign+r.change_pct.toFixed(2)+'%</span>';
+    listHTML += '<span class="resonance"><span class="score-bar"><span class="score-fill" style="width:'+barW+'%"></span></span> '+r.score+'</span>';
+    listHTML += '<span class="signal">'+r.verdict+'</span>';
+    listHTML += '</div>';
+  });
+  document.getElementById('heatmapList').innerHTML = listHTML || '<p style="color:var(--muted);text-align:center;padding:16px">暂无行业数据</p>';
+  
+  document.getElementById('loadingView').classList.add('hidden');
+  document.getElementById('mainView').classList.remove('hidden');
+})();
+</script>
+
+
+<div style="text-align:center;padding:16px;color:var(--muted);font-size:0.78em">🆓 本工具完全免费 · 由 Hermes Agent 驱动开发</div>
+</body>
+</html>
