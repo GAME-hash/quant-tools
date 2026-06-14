@@ -398,6 +398,11 @@ body {
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+
+<div style="text-align:center;padding:16px;color:var(--muted);font-size:0.78em;margin-bottom:16px">
+  🆓 本工具完全免费 · 由 <a href="https://github.com/NousResearch/hermes-agent" style="color:var(--accent)">Hermes Agent</a> 驱动开发
+</div>
+
 <p class="disclaimer">
   ⚠️ 仅供参考，不构成投资建议<br>
   数据本地存储 · 所有分析基于用户输入的持仓数量<br>
@@ -909,39 +914,7 @@ document.getElementById('qtyInput').addEventListener('keydown', function(e) {
 // ══════════════════════════════════════
 renderAll();
 </script>
-<!-- ═══ 付费模块 · 统一模板 ═══ -->
-<style>
-.pay-section {
-  background: var(--card); border: 1px solid rgba(163,113,247,0.3); border-radius: 14px;
-  padding: 20px; text-align: center; margin-bottom: 16px;
-}
-.pay-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; color: var(--text); }
-.pay-desc { font-size: 0.8em; color: var(--muted); margin-bottom: 14px; }
-.pay-price { font-size: 2em; font-weight: 800; color: var(--accent); }
-.pay-qr {
-  width: 160px; height: 160px; border: 1px solid var(--border); border-radius: 10px;
-  margin: 10px auto; display: flex; align-items: center; justify-content: center;
-  background: #fff; color: #333; font-size: 0.8em;
-}
-.pay-note { font-size: 0.72em; color: var(--muted); margin-top: 10px; line-height: 1.5; }
-</style>
 
-<div class="pay-section" id="paySection">
-  <div class="pay-title">💰 解锁完整功能</div>
-  <div class="pay-desc">觉得有用？扫码支持，解锁所有高级功能</div>
-  <div class="pay-price">¥3.9</div>
-  <div class="pay-qr" id="payQR">
-    <!-- 请替换为您的微信/支付宝收款码 -->
-    <span style="text-align:center;padding:10px;line-height:1.4">
-      📱<br>微信/支付宝<br>扫码支付<br>
-      <span style="font-size:0.7em;color:#999">替换为<br>您的收款码</span>
-    </span>
-  </div>
-  <div class="pay-note">
-    付款后截图发送给客服，获取解锁码<br>
-    或直接扫码 → 工具自动解锁 ✨
-  </div>
-</div>
 
 </body>
 </html>
